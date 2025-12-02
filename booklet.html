@@ -5,82 +5,107 @@
 <title>Booklet Maker A3</title>
 <style>
 body { font-family: sans-serif; margin: 20px; }
+textarea { width: 100%; height: 200px; margin-top: 20px; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<!-- Working PDF.js build avoids MIME issues on Android WebView -->
+<script src="https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
 <body>
 <h2>Booklet Maker (A3, client only)</h2>
-<input type="file" id="file" accept="application/pdf" />
+<input type="file" id="file" accept="application/pdf" multiple />
 <button id="go">Make Booklet</button>
 <a id="download" style="display:none">Download booklet</a>
+<textarea id="errors" placeholder="Errors will appear here"></textarea>
 <script>
+function logError(e) {
+  const box = document.getElementById('errors');
+  box.value += (e.stack || e.toString()) + "\n\n";
+}
+
 function imposedPairs(n) {
-  if (n === 2) return [[1, 0]];
-  const pad = n % 4 === 0 ? 0 : 4 - (n % 4);
-  const total = n + pad;
-  const pairs = [];
-  let L = 0;
-  let R = total - 1;
-  while (L < R) {
-    pairs.push([R, L]);
-    L++; R--;
-    pairs.push([L, R]);
-    L++; R--;
+  try {
+    if (n === 2) return [[1, 0]];
+    const pad = n % 4 === 0 ? 0 : 4 - (n % 4);
+    const total = n + pad;
+    const pairs = [];
+    let L = 0;
+    let R = total - 1;
+    while (L < R) {
+      pairs.push([R, L]);
+      L++; R--;
+      pairs.push([L, R]);
+      L++; R--;
+    }
+    return pairs;
+  } catch (e) {
+    logError(e);
+    return [];
   }
-  return pairs;
 }
 
 document.getElementById('go').onclick = async () => {
-  const f = document.getElementById('file').files[0];
-  if (!f) return;
+  try {
+    const files = Array.from(document.getElementById('file').files);
+    if (!files.length) return;
 
-  const buf = await f.arrayBuffer();
-  const src = await pdfjsLib.getDocument({data: buf}).promise;
-  const count = src.numPages;
+    for (const f of files) {
+      try {
+        const buf = await f.arrayBuffer();
+        const src = await pdfjsLib.getDocument({data: buf}).promise;
+        const count = src.numPages;
+        const pairs = count === 1 ? [[0, -1]] : imposedPairs(count);
 
-  const pairs = imposedPairs(count);
+        const out = await PDFLib.PDFDocument.create();
+        const A3w = 1190.55;
+        const A3h = 841.89;
 
-  const out = await PDFLib.PDFDocument.create();
-  const A3w = 1190.55;
-  const A3h = 841.89;
+        const rendered = new Array(count);
+        for (let i = 1; i <= count; i++) {
+          const p = await src.getPage(i);
+          const viewport = p.getViewport({scale: 2});
+          const c = document.createElement('canvas');
+          c.width = viewport.width;
+          c.height = viewport.height;
+          const ctx = c.getContext('2d');
+          await p.render({canvasContext: ctx, viewport}).promise;
+          rendered[i - 1] = c;
+        }
 
-  const rendered = new Array(count);
-  for (let i = 1; i <= count; i++) {
-    const p = await src.getPage(i);
-    const viewport = p.getViewport({scale: 2});
-    const c = document.createElement('canvas');
-    c.width = viewport.width;
-    c.height = viewport.height;
-    const ctx = c.getContext('2d');
-    await p.render({canvasContext: ctx, viewport}).promise;
-    rendered[i - 1] = c;
-  }
+        for (const [L, R] of pairs) {
+          const page = out.addPage([A3w, A3h]);
 
-  for (const [L, R] of pairs) {
-    const page = out.addPage([A3w, A3h]);
+          if (L === -1) {
+            const name = f.name.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_-]/g, ' ');
+            page.drawText(name, { x: 40, y: A3h - 80, size: 48 });
+          } else if (L >= 0 && L < count) {
+            const png = await out.embedPng(rendered[L].toDataURL());
+            const s = A3h / png.height;
+            page.drawImage(png, { x: 0, y: 0, width: png.width * s, height: png.height * s });
+          }
 
-    if (L < count) {
-      const png = await out.embedPng(rendered[L].toDataURL());
-      const s = A3h / png.height;
-      page.drawImage(png, { x: 0, y: 0, width: png.width * s, height: png.height * s });
+          if (R >= 0 && R < count) {
+            const png = await out.embedPng(rendered[R].toDataURL());
+            const s = A3h / png.height;
+            page.drawImage(png, { x: A3w / 2, y: 0, width: png.width * s, height: png.height * s });
+          }
+        }
+
+        const bytes = await out.save();
+        const blob = new Blob([bytes], {type:'application/pdf'});
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.name.replace(/\.pdf$/i, '') + '_booklet.pdf';
+        a.click();
+      } catch (e) {
+        logError(e);
+      }
     }
-
-    if (R < count) {
-      const png = await out.embedPng(rendered[R].toDataURL());
-      const s = A3h / png.height;
-      page.drawImage(png, { x: A3w / 2, y: 0, width: png.width * s, height: png.height * s });
-    }
+  } catch (e) {
+    logError(e);
   }
-
-  const bytes = await out.save();
-  const blob = new Blob([bytes], {type:'application/pdf'});
-  const url = URL.createObjectURL(blob);
-
-  const a = document.getElementById('download');
-  a.href = url;
-  a.download = 'booklet.pdf';
-  a.style.display = 'inline';
 };
 </script>
 </body>
