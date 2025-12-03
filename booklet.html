@@ -2,24 +2,307 @@
 <html>
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Booklet Maker A3</title>
 <style>
-body { font-family: sans-serif; margin: 20px; }
-textarea { width: 100%; height: 260px; margin-top: 20px; }
+  :root {
+    color-scheme: light dark;
+    --bg: #0f172a;
+    --bg-soft: #1e293b;
+    --accent: #22c55e;
+    --accent-soft: rgba(34, 197, 94, 0.12);
+    --accent-strong: rgba(34, 197, 94, 0.22);
+    --text: #e5e7eb;
+    --text-muted: #9ca3af;
+    --border-subtle: rgba(148, 163, 184, 0.35);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1f2937, #020617 55%);
+    color: var(--text);
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 640px;
+    padding: 16px;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: radial-gradient(circle at top, #111827, #020617 60%);
+    border-radius: 18px;
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.9);
+    padding: 18px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  h1 span.badge {
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-strong);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .file-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px dashed rgba(148, 163, 184, 0.7);
+  }
+
+  input[type="file"]#file {
+    flex: 1;
+    max-width: 100%;
+    font-size: 0.85rem;
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), #020617);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.45);
+  }
+
+  input[type="file"]#file::file-selector-button {
+    margin: -2px 10px -2px -4px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #22c55e, #4ade80);
+    color: #022c22;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  input[type="file"]#file::-webkit-file-upload-button {
+    margin: -2px 10px -2px -4px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #22c55e, #4ade80);
+    color: #022c22;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .primary-button {
+    margin-top: 4px;
+    width: 100%;
+    padding: 11px 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #22c55e, #4ade80);
+    color: #022c22;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    box-shadow: 0 14px 30px rgba(34, 197, 94, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .primary-button:active {
+    transform: translateY(1px) scale(0.995);
+    box-shadow: 0 10px 20px rgba(34, 197, 94, 0.4);
+  }
+
+  .primary-button span.icon {
+    font-size: 1.1rem;
+  }
+
+  .helper-text {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .chip {
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px dashed rgba(148, 163, 184, 0.6);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .debug-toggle {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .debug-toggle input {
+    accent-color: var(--accent);
+  }
+
+  .debug-panel {
+    margin-top: 6px;
+    display: none;
+  }
+
+  .debug-panel.visible {
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    resize: vertical;
+  }
+
+  textarea:focus {
+    outline: 1px solid var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent-soft);
+  }
+
+  @media (min-width: 640px) {
+    .card {
+      padding: 20px 20px 16px;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+    }
+
+    .primary-button {
+      width: auto;
+      align-self: flex-start;
+      padding-inline: 22px;
+    }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
 <body>
-<h2>Booklet Maker (A3, client only)</h2>
-<input type="file" id="file" accept="application/pdf" multiple />
-<button id="go">Make Booklet</button>
-<textarea id="errors" placeholder="Debug output"></textarea>
+<div class="app-shell">
+  <div class="card">
+    <div>
+      <h1>
+        Booklet Maker
+        <span class="badge">A3 • Client only</span>
+      </h1>
+      <p class="subtitle">Drop in PDFs to create duplex-friendly A3 booklets.</p>
+    </div>
+
+    <div class="form-row">
+      <label class="file-label">
+        Source PDF files
+        <div class="file-input-wrapper">
+          <input type="file" id="file" multiple />
+        </div>
+      </label>
+
+      <button id="go" class="primary-button">
+        <span class="icon">➜</span>
+        Make booklet PDF
+      </button>
+
+      <p class="helper-text">
+        Prints as A3 booklet: single-page files pass through as A4, two-page files get a title cover.
+      </p>
+
+      <div class="chips">
+        <span class="chip">A3 booklet imposition</span>
+        <span class="chip">Client-side only</span>
+        <span class="chip">Rotates every other sheet</span>
+      </div>
+
+      <label class="debug-toggle">
+        <input type="checkbox" id="toggle-debug" />
+        Show debug log
+      </label>
+
+      <div id="debug-panel" class="debug-panel">
+        <textarea id="errors" placeholder="Debug output"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.449/+esm';
 
 function debug(msg) {
   const t = document.getElementById('errors');
+  if (!t) return;
   t.value += msg + "\n";
 }
 
@@ -33,6 +316,14 @@ try {
 debug('pdfjs loaded: ' + typeof pdfjs);
 const pdfjsLib = pdfjs;
 
+const toggleDebug = document.getElementById('toggle-debug');
+const debugPanel = document.getElementById('debug-panel');
+if (toggleDebug && debugPanel) {
+  toggleDebug.addEventListener('change', () => {
+    debugPanel.classList.toggle('visible', toggleDebug.checked);
+  });
+}
+
 document.getElementById('go').onclick = async () => {
   debug('Button clicked');
   const files = Array.from(document.getElementById('file').files);
@@ -42,7 +333,13 @@ document.getElementById('go').onclick = async () => {
   }
 
   for (const f of files) {
-    debug('Processing file: ' + f.name);
+    debug('Processing file: ' + f.name + ' (type=' + (f.type || 'unknown') + ')');
+
+    // Skip obviously non-PDF files (but allow aliases/symlinks by checking name too)
+    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
+      debug('Skipping non-PDF file: ' + f.name);
+      continue;
+    }
     try {
       const buf = await f.arrayBuffer();
       // Make a copy for PDFLib so pdfjs can safely detach/transfer the original buffer
@@ -159,15 +456,27 @@ document.getElementById('go').onclick = async () => {
         if (L >= 0 && L < count) {
           debug('Drawing left page ' + L);
           const img = await out.embedPng(rendered[L].toDataURL());
-          const s = A3h / img.height;
-          page.drawImage(img, { x: 0, y: 0, width: img.width * s, height: img.height * s });
+          const maxW = A3w / 2;
+          const maxH = A3h;
+          const s = Math.min(maxW / img.width, maxH / img.height);
+          const drawW = img.width * s;
+          const drawH = img.height * s;
+          const x = (maxW - drawW) / 2;
+          const y = (maxH - drawH) / 2;
+          page.drawImage(img, { x, y, width: drawW, height: drawH });
         }
 
         if (R >= 0 && R < count) {
           debug('Drawing right page ' + R);
           const img = await out.embedPng(rendered[R].toDataURL());
-          const s = A3h / img.height;
-          page.drawImage(img, { x: A3w / 2, y: 0, width: img.width * s, height: img.height * s });
+          const maxW = A3w / 2;
+          const maxH = A3h;
+          const s = Math.min(maxW / img.width, maxH / img.height);
+          const drawW = img.width * s;
+          const drawH = img.height * s;
+          const x = A3w / 2 + (maxW - drawW) / 2;
+          const y = (maxH - drawH) / 2;
+          page.drawImage(img, { x, y, width: drawW, height: drawH });
         }
 
         // This sets the page rotation metadata for printing
