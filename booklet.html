@@ -45,6 +45,8 @@ document.getElementById('go').onclick = async () => {
     debug('Processing file: ' + f.name);
     try {
       const buf = await f.arrayBuffer();
+      // Make a copy for PDFLib so pdfjs can safely detach/transfer the original buffer
+      const pdfLibBuf = buf.slice(0);
       debug('ArrayBuffer ok, loading PDF');
 
       let src;
@@ -56,8 +58,30 @@ document.getElementById('go').onclick = async () => {
         continue;
       }
 
-      const count = src.numPages;
+      let count = src.numPages;
       debug('Page count: ' + count);
+
+      // Special case: a single-page PDF should pass through as-is (A4, no imposition)
+      if (count === 1) {
+        debug('Single page input – passing through as A4');
+        const orig = await PDFLib.PDFDocument.load(pdfLibBuf);
+        const out = await PDFLib.PDFDocument.create();
+        const [page] = await out.copyPages(orig, [0]);
+        out.addPage(page);
+
+        debug('Saving passthrough PDF');
+        const bytes = await out.save();
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.name.replace(/\.pdf$/i, '') + '_a4.pdf';
+        a.click();
+
+        debug('Done with single-page file');
+        continue;
+      }
 
       function imposedPairs(n) {
         if (n === 2) return [[1, 0]];
@@ -75,14 +99,13 @@ document.getElementById('go').onclick = async () => {
         return arr;
       }
 
-      const pairs = count === 1 ? [[0, -1]] : imposedPairs(count);
-      debug('Pairs: ' + JSON.stringify(pairs));
-
       const out = await PDFLib.PDFDocument.create();
       const A3w = 1190.55;
       const A3h = 841.89;
 
-      const rendered = new Array(count);
+      const rendered = [];
+      const baseName = f.name.replace(/\.pdf$/i, '');
+      const coverLabel = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || baseName || 'Booklet';
       for (let i = 1; i <= count; i++) {
         debug('Rendering page ' + i);
         const p = await src.getPage(i);
@@ -92,13 +115,45 @@ document.getElementById('go').onclick = async () => {
         c.height = viewport.height;
         const ctx = c.getContext('2d');
         await p.render({ canvasContext: ctx, viewport }).promise;
-        rendered[i - 1] = c;
+        rendered.push(c);
         debug('Rendered page ' + i);
       }
 
+      if (count === 2) {
+        debug('Inserting cover page for two-page input');
+        const template = rendered[0] || rendered[1];
+        const coverCanvas = document.createElement('canvas');
+        coverCanvas.width = template ? template.width : 1190;
+        coverCanvas.height = template ? template.height : 842;
+        const coverCtx = coverCanvas.getContext('2d');
+        coverCtx.fillStyle = '#ffffff';
+        coverCtx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+        coverCtx.fillStyle = '#000000';
+        coverCtx.textAlign = 'center';
+        coverCtx.textBaseline = 'middle';
+
+        // Auto-shrink font size so long titles still fit inside the page
+        const maxWidth = coverCanvas.width * 0.8;
+        let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.15;
+        while (fontSize > 10) {
+          coverCtx.font = `bold ${fontSize}px sans-serif`;
+          const metrics = coverCtx.measureText(coverLabel);
+          if (metrics.width <= maxWidth) break;
+          fontSize -= 2;
+        }
+
+        coverCtx.fillText(coverLabel, coverCanvas.width / 2, coverCanvas.height / 2);
+        rendered.unshift(coverCanvas);
+        count = rendered.length;
+      }
+
+      const pairs = count === 1 ? [[0, -1]] : imposedPairs(count);
+      debug('Pairs: ' + JSON.stringify(pairs));
+
       debug('Creating imposed output pages');
 
-      for (const [L, R] of pairs) {
+      for (let i = 0; i < pairs.length; i++) {
+        const [L, R] = pairs[i];
         const page = out.addPage([A3w, A3h]);
 
         if (L >= 0 && L < count) {
@@ -113,6 +168,11 @@ document.getElementById('go').onclick = async () => {
           const img = await out.embedPng(rendered[R].toDataURL());
           const s = A3h / img.height;
           page.drawImage(img, { x: A3w / 2, y: 0, width: img.width * s, height: img.height * s });
+        }
+
+        // This sets the page rotation metadata for printing
+        if (i % 2 === 1) {
+          page.setRotation(PDFLib.degrees(180));
         }
       }
 
