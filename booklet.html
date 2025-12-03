@@ -164,6 +164,11 @@
     gap: 0.4rem;
   }
 
+  .primary-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
   .primary-button:active {
     transform: translateY(1px) scale(0.995);
     box-shadow: 0 10px 20px rgba(34, 197, 94, 0.4);
@@ -176,6 +181,40 @@
   .helper-text {
     margin-top: 2px;
     font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .loading-indicator {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .loading-indicator.visible {
+    display: flex;
+  }
+
+  .loading-indicator .spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid rgba(148, 163, 184, 0.3);
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+
+  .loading-indicator strong {
+    display: block;
+    font-size: 0.82rem;
+  }
+
+  .loading-indicator span {
+    font-size: 0.72rem;
     color: var(--text-muted);
   }
 
@@ -248,6 +287,12 @@
       padding-inline: 22px;
     }
   }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </head>
@@ -285,6 +330,19 @@
         <span class="chip">Rotates every other sheet</span>
       </div>
 
+      <div
+        id="loading-indicator"
+        class="loading-indicator"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <strong>Processing PDF…</strong>
+          <span>This can take a moment for longer documents.</span>
+        </div>
+      </div>
+
       <label class="debug-toggle">
         <input type="checkbox" id="toggle-debug" />
         Show debug log
@@ -318,190 +376,209 @@ const pdfjsLib = pdfjs;
 
 const toggleDebug = document.getElementById('toggle-debug');
 const debugPanel = document.getElementById('debug-panel');
+const goButton = document.getElementById('go');
+const loadingIndicator = document.getElementById('loading-indicator');
+
+function setLoading(active) {
+  if (goButton) {
+    goButton.disabled = active;
+    goButton.setAttribute('aria-busy', active ? 'true' : 'false');
+  }
+  if (loadingIndicator) {
+    loadingIndicator.classList.toggle('visible', active);
+  }
+}
 if (toggleDebug && debugPanel) {
   toggleDebug.addEventListener('change', () => {
     debugPanel.classList.toggle('visible', toggleDebug.checked);
   });
 }
 
-document.getElementById('go').onclick = async () => {
-  debug('Button clicked');
-  const files = Array.from(document.getElementById('file').files);
-  if (!files.length) {
-    debug('No files selected');
-    return;
-  }
-
-  for (const f of files) {
-    debug('Processing file: ' + f.name + ' (type=' + (f.type || 'unknown') + ')');
-
-    // Skip obviously non-PDF files (but allow aliases/symlinks by checking name too)
-    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
-      debug('Skipping non-PDF file: ' + f.name);
-      continue;
-    }
+if (goButton) {
+  goButton.addEventListener('click', async () => {
+    debug('Button clicked');
+    setLoading(true);
     try {
-      const buf = await f.arrayBuffer();
-      // Make a copy for PDFLib so pdfjs can safely detach/transfer the original buffer
-      const pdfLibBuf = buf.slice(0);
-      debug('ArrayBuffer ok, loading PDF');
-
-      let src;
-      try {
-        src = await pdfjsLib.getDocument({ data: buf }).promise;
-        debug('PDF loaded successfully');
-      } catch (e) {
-        debug('getDocument failed: ' + e);
-        continue;
+      const fileInput = document.getElementById('file');
+      const files = Array.from(fileInput?.files || []);
+      if (!files.length) {
+        debug('No files selected');
+        return;
       }
 
-      let count = src.numPages;
-      debug('Page count: ' + count);
+      for (const f of files) {
+        debug('Processing file: ' + f.name + ' (type=' + (f.type || 'unknown') + ')');
 
-      // Special case: a single-page PDF should pass through as-is (A4, no imposition)
-      if (count === 1) {
-        debug('Single page input – passing through as A4');
-        const orig = await PDFLib.PDFDocument.load(pdfLibBuf);
-        const out = await PDFLib.PDFDocument.create();
-        const [page] = await out.copyPages(orig, [0]);
-        out.addPage(page);
-
-        debug('Saving passthrough PDF');
-        const bytes = await out.save();
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = f.name.replace(/\.pdf$/i, '') + '_a4.pdf';
-        a.click();
-
-        debug('Done with single-page file');
-        continue;
-      }
-
-      function imposedPairs(n) {
-        if (n === 2) return [[1, 0]];
-        const pad = n % 4 === 0 ? 0 : 4 - (n % 4);
-        const total = n + pad;
-        const arr = [];
-        let L = 0;
-        let R = total - 1;
-        while (L < R) {
-          arr.push([R, L]);
-          L++; R--;
-          arr.push([L, R]);
-          L++; R--;
+        // Skip obviously non-PDF files (but allow aliases/symlinks by checking name too)
+        if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
+          debug('Skipping non-PDF file: ' + f.name);
+          continue;
         }
-        return arr;
-      }
+        try {
+          const buf = await f.arrayBuffer();
+          // Make a copy for PDFLib so pdfjs can safely detach/transfer the original buffer
+          const pdfLibBuf = buf.slice(0);
+          debug('ArrayBuffer ok, loading PDF');
 
-      const out = await PDFLib.PDFDocument.create();
-      const A3w = 1190.55;
-      const A3h = 841.89;
+          let src;
+          try {
+            src = await pdfjsLib.getDocument({ data: buf }).promise;
+            debug('PDF loaded successfully');
+          } catch (e) {
+            debug('getDocument failed: ' + e);
+            continue;
+          }
 
-      const rendered = [];
-      const baseName = f.name.replace(/\.pdf$/i, '');
-      const coverLabel = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || baseName || 'Booklet';
-      for (let i = 1; i <= count; i++) {
-        debug('Rendering page ' + i);
-        const p = await src.getPage(i);
-        const viewport = p.getViewport({ scale: 2 });
-        const c = document.createElement('canvas');
-        c.width = viewport.width;
-        c.height = viewport.height;
-        const ctx = c.getContext('2d');
-        await p.render({ canvasContext: ctx, viewport }).promise;
-        rendered.push(c);
-        debug('Rendered page ' + i);
-      }
+          let count = src.numPages;
+          debug('Page count: ' + count);
 
-      if (count === 2) {
-        debug('Inserting cover page for two-page input');
-        const template = rendered[0] || rendered[1];
-        const coverCanvas = document.createElement('canvas');
-        coverCanvas.width = template ? template.width : 1190;
-        coverCanvas.height = template ? template.height : 842;
-        const coverCtx = coverCanvas.getContext('2d');
-        coverCtx.fillStyle = '#ffffff';
-        coverCtx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
-        coverCtx.fillStyle = '#000000';
-        coverCtx.textAlign = 'center';
-        coverCtx.textBaseline = 'middle';
+          // Special case: a single-page PDF should pass through as-is (A4, no imposition)
+          if (count === 1) {
+            debug('Single page input – passing through as A4');
+            const orig = await PDFLib.PDFDocument.load(pdfLibBuf);
+            const out = await PDFLib.PDFDocument.create();
+            const [page] = await out.copyPages(orig, [0]);
+            out.addPage(page);
 
-        // Auto-shrink font size so long titles still fit inside the page
-        const maxWidth = coverCanvas.width * 0.8;
-        let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.15;
-        while (fontSize > 10) {
-          coverCtx.font = `bold ${fontSize}px sans-serif`;
-          const metrics = coverCtx.measureText(coverLabel);
-          if (metrics.width <= maxWidth) break;
-          fontSize -= 2;
+            debug('Saving passthrough PDF');
+            const bytes = await out.save();
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = f.name.replace(/\.pdf$/i, '') + '_a4.pdf';
+            a.click();
+
+            debug('Done with single-page file');
+            continue;
+          }
+
+          function imposedPairs(n) {
+            if (n === 2) return [[1, 0]];
+            const pad = n % 4 === 0 ? 0 : 4 - (n % 4);
+            const total = n + pad;
+            const arr = [];
+            let L = 0;
+            let R = total - 1;
+            while (L < R) {
+              arr.push([R, L]);
+              L++; R--;
+              arr.push([L, R]);
+              L++; R--;
+            }
+            return arr;
+          }
+
+          const out = await PDFLib.PDFDocument.create();
+          const A3w = 1190.55;
+          const A3h = 841.89;
+
+          const rendered = [];
+          const baseName = f.name.replace(/\.pdf$/i, '');
+          const coverLabel = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || baseName || 'Booklet';
+          for (let i = 1; i <= count; i++) {
+            debug('Rendering page ' + i);
+            const p = await src.getPage(i);
+            const viewport = p.getViewport({ scale: 2 });
+            const c = document.createElement('canvas');
+            c.width = viewport.width;
+            c.height = viewport.height;
+            const ctx = c.getContext('2d');
+            await p.render({ canvasContext: ctx, viewport }).promise;
+            rendered.push(c);
+            debug('Rendered page ' + i);
+          }
+
+          if (count === 2) {
+            debug('Inserting cover page for two-page input');
+            const template = rendered[0] || rendered[1];
+            const coverCanvas = document.createElement('canvas');
+            coverCanvas.width = template ? template.width : 1190;
+            coverCanvas.height = template ? template.height : 842;
+            const coverCtx = coverCanvas.getContext('2d');
+            coverCtx.fillStyle = '#ffffff';
+            coverCtx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+            coverCtx.fillStyle = '#000000';
+            coverCtx.textAlign = 'center';
+            coverCtx.textBaseline = 'middle';
+
+            // Auto-shrink font size so long titles still fit inside the page
+            const maxWidth = coverCanvas.width * 0.8;
+            let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.15;
+            while (fontSize > 10) {
+              coverCtx.font = `bold ${fontSize}px sans-serif`;
+              const metrics = coverCtx.measureText(coverLabel);
+              if (metrics.width <= maxWidth) break;
+              fontSize -= 2;
+            }
+
+            coverCtx.fillText(coverLabel, coverCanvas.width / 2, coverCanvas.height / 2);
+            rendered.unshift(coverCanvas);
+            count = rendered.length;
+          }
+
+          const pairs = count === 1 ? [[0, -1]] : imposedPairs(count);
+          debug('Pairs: ' + JSON.stringify(pairs));
+
+          debug('Creating imposed output pages');
+
+          for (let i = 0; i < pairs.length; i++) {
+            const [L, R] = pairs[i];
+            const page = out.addPage([A3w, A3h]);
+
+            if (L >= 0 && L < count) {
+              debug('Drawing left page ' + L);
+              const img = await out.embedPng(rendered[L].toDataURL());
+              const maxW = A3w / 2;
+              const maxH = A3h;
+              const s = Math.min(maxW / img.width, maxH / img.height);
+              const drawW = img.width * s;
+              const drawH = img.height * s;
+              const x = (maxW - drawW) / 2;
+              const y = (maxH - drawH) / 2;
+              page.drawImage(img, { x, y, width: drawW, height: drawH });
+            }
+
+            if (R >= 0 && R < count) {
+              debug('Drawing right page ' + R);
+              const img = await out.embedPng(rendered[R].toDataURL());
+              const maxW = A3w / 2;
+              const maxH = A3h;
+              const s = Math.min(maxW / img.width, maxH / img.height);
+              const drawW = img.width * s;
+              const drawH = img.height * s;
+              const x = A3w / 2 + (maxW - drawW) / 2;
+              const y = (maxH - drawH) / 2;
+              page.drawImage(img, { x, y, width: drawW, height: drawH });
+            }
+
+            // This sets the page rotation metadata for printing
+            if (i % 2 === 1) {
+              page.setRotation(PDFLib.degrees(180));
+            }
+          }
+
+          debug('Saving PDF');
+          const bytes = await out.save();
+          const blob = new Blob([bytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = f.name.replace(/\.pdf$/i, '') + '_booklet.pdf';
+          a.click();
+
+          debug('Done with file');
+        } catch (e) {
+          debug('Fatal error: ' + e);
         }
-
-        coverCtx.fillText(coverLabel, coverCanvas.width / 2, coverCanvas.height / 2);
-        rendered.unshift(coverCanvas);
-        count = rendered.length;
       }
-
-      const pairs = count === 1 ? [[0, -1]] : imposedPairs(count);
-      debug('Pairs: ' + JSON.stringify(pairs));
-
-      debug('Creating imposed output pages');
-
-      for (let i = 0; i < pairs.length; i++) {
-        const [L, R] = pairs[i];
-        const page = out.addPage([A3w, A3h]);
-
-        if (L >= 0 && L < count) {
-          debug('Drawing left page ' + L);
-          const img = await out.embedPng(rendered[L].toDataURL());
-          const maxW = A3w / 2;
-          const maxH = A3h;
-          const s = Math.min(maxW / img.width, maxH / img.height);
-          const drawW = img.width * s;
-          const drawH = img.height * s;
-          const x = (maxW - drawW) / 2;
-          const y = (maxH - drawH) / 2;
-          page.drawImage(img, { x, y, width: drawW, height: drawH });
-        }
-
-        if (R >= 0 && R < count) {
-          debug('Drawing right page ' + R);
-          const img = await out.embedPng(rendered[R].toDataURL());
-          const maxW = A3w / 2;
-          const maxH = A3h;
-          const s = Math.min(maxW / img.width, maxH / img.height);
-          const drawW = img.width * s;
-          const drawH = img.height * s;
-          const x = A3w / 2 + (maxW - drawW) / 2;
-          const y = (maxH - drawH) / 2;
-          page.drawImage(img, { x, y, width: drawW, height: drawH });
-        }
-
-        // This sets the page rotation metadata for printing
-        if (i % 2 === 1) {
-          page.setRotation(PDFLib.degrees(180));
-        }
-      }
-
-      debug('Saving PDF');
-      const bytes = await out.save();
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = f.name.replace(/\.pdf$/i, '') + '_booklet.pdf';
-      a.click();
-
-      debug('Done with file');
-
-    } catch (e) {
-      debug('Fatal error: ' + e);
+    } finally {
+      setLoading(false);
     }
-  }
-};
+  });
+}
 </script>
 </body>
 </html>
