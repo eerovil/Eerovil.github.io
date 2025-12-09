@@ -476,7 +476,7 @@ if (goButton) {
 
           const rendered = [];
           const baseName = f.name.replace(/\.pdf$/i, '');
-          const coverLabel = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || baseName || 'Booklet';
+          const coverLabel = baseName.replace(/[_-]+/g, ' ').replace(/[0-9]/g, "").replace(/\s+/g, ' ').trim() || baseName || 'Booklet';
           for (let i = 1; i <= count; i++) {
             debug('Rendering page ' + i);
             const p = await src.getPage(i);
