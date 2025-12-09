@@ -500,20 +500,45 @@ if (goButton) {
             coverCtx.fillStyle = '#ffffff';
             coverCtx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
             coverCtx.fillStyle = '#000000';
-            coverCtx.textAlign = 'center';
-            coverCtx.textBaseline = 'middle';
+            coverCtx.textAlign = 'left';
+            coverCtx.textBaseline = 'top';
 
-            // Auto-shrink font size so long titles still fit inside the page
-            const maxWidth = coverCanvas.width * 0.8;
-            let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.15;
-            while (fontSize > 10) {
-              coverCtx.font = `bold ${fontSize}px sans-serif`;
-              const metrics = coverCtx.measureText(coverLabel);
-              if (metrics.width <= maxWidth) break;
-              fontSize -= 2;
+            // Position title in top right corner with wrapping
+            const rightHalfStart = coverCanvas.width / 2;
+            const padding = coverCanvas.width * 0.05; // 5% padding
+            const maxWidth = (coverCanvas.width / 2) - (padding * 2); // Right half width minus padding
+            let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.08; // Smaller font size for corner placement
+            
+            // Set font for text measurement and rendering
+            coverCtx.font = `bold ${fontSize}px sans-serif`;
+            const words = coverLabel.split(' ');
+            let lines = [];
+            let currentLine = '';
+            
+            // Wrap text into lines that fit within maxWidth
+            for (const word of words) {
+              const testLine = currentLine ? `${currentLine} ${word}` : word;
+              const metrics = coverCtx.measureText(testLine);
+              if (metrics.width > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
             }
-
-            coverCtx.fillText(coverLabel, coverCanvas.width / 2, coverCanvas.height / 2);
+            if (currentLine) {
+              lines.push(currentLine);
+            }
+            
+            // Draw wrapped text in top right corner
+            const lineHeight = fontSize * 1.2;
+            const startX = rightHalfStart + padding;
+            const startY = padding;
+            
+            lines.forEach((line, index) => {
+              coverCtx.fillText(line, startX, startY + (index * lineHeight));
+            });
+            
             rendered.unshift(coverCanvas);
             count = rendered.length;
           }
