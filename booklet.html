@@ -507,15 +507,15 @@ if (goButton) {
             const rightHalfStart = coverCanvas.width / 2;
             const padding = coverCanvas.width * 0.05; // 5% padding
             const maxWidth = (coverCanvas.width / 2) - (padding * 2); // Right half width minus padding
-            let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.08; // Smaller initial font size
+            let fontSize = Math.min(coverCanvas.width, coverCanvas.height) * 0.08; // Smaller font size for corner placement
             
-            // Find optimal font size
+            // Set font for text measurement and rendering
             coverCtx.font = `bold ${fontSize}px sans-serif`;
             const words = coverLabel.split(' ');
             let lines = [];
             let currentLine = '';
             
-            // Wrap text into lines
+            // Wrap text into lines that fit within maxWidth
             for (const word of words) {
               const testLine = currentLine ? `${currentLine} ${word}` : word;
               const metrics = coverCtx.measureText(testLine);
