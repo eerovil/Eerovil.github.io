@@ -498,21 +498,6 @@
         <h1>Nuotit</h1>
         <p class="level-label">Valitse taso</p>
         <div class="level-btns" id="menu-level-btns">
-            <button type="button" class="level-btn" id="btn-level-1" data-level="1">Taso 1: c¹, d¹, e¹</button>
-            <button type="button" class="level-btn locked" id="btn-level-2" data-level="2">Taso 2: c¹-f¹</button>
-            <button type="button" class="level-btn locked" id="btn-level-3" data-level="3">Taso 3: c¹-g¹</button>
-            <button type="button" class="level-btn locked" id="btn-level-4" data-level="4">Taso 4: c¹-a¹</button>
-            <button type="button" class="level-btn locked" id="btn-level-5" data-level="5">Taso 5: c¹-h¹</button>
-            <button type="button" class="level-btn locked" id="btn-level-6" data-level="6">Taso 6: d¹–c²</button>
-            <button type="button" class="level-btn locked" id="btn-level-7" data-level="7">Taso 7: e¹–d²</button>
-            <button type="button" class="level-btn locked" id="btn-level-8" data-level="8">Taso 8: f¹–e²</button>
-            <button type="button" class="level-btn locked" id="btn-level-9" data-level="9">Taso 9: g¹–f²</button>
-            <button type="button" class="level-btn locked" id="btn-level-10" data-level="10">Taso 10: a¹–g²</button>
-            <button type="button" class="level-btn locked" id="btn-level-11" data-level="11">Taso 11: C, D, E</button>
-            <button type="button" class="level-btn locked" id="btn-level-12" data-level="12">Taso 12: C–F</button>
-            <button type="button" class="level-btn locked" id="btn-level-13" data-level="13">Taso 13: C–G</button>
-            <button type="button" class="level-btn locked" id="btn-level-14" data-level="14">Taso 14: C–A</button>
-            <button type="button" class="level-btn locked" id="btn-level-15" data-level="15">Taso 15: C–B</button>
         </div>
         <div class="menu-footer">
             <button type="button" class="btn-reset" id="btn-reset-scores">Nollaa pisteet</button>
@@ -571,11 +556,18 @@
                         <path
                             d="M455.486,211.365c-22.759,0-41.281,18.522-41.281,41.282c0,22.77,18.522,41.281,41.281,41.281c22.771,0,41.282-18.511,41.282-41.281C496.768,229.887,478.256,211.365,455.486,211.365z" />
                     </g>
-                    <!-- Ledger: bottom for G (C), top for F (B) -->
-                    <line id="ledger" x1="180" y1="70" x2="220" y2="70" stroke="#000" stroke-width="2"
-                        visibility="hidden" />
-                    <line id="ledger-top" x1="180" y1="4" x2="220" y2="4" stroke="#000" stroke-width="2"
-                        visibility="hidden" />
+                    <!-- Ledger lines as staff extensions (multiple below and above) -->
+                    <g id="ledger-below-group">
+                        <line class="ledger-below" x1="180" y1="70" x2="220" y2="70" stroke="#000" stroke-width="2" visibility="hidden" />
+                        <line class="ledger-below" x1="180" y1="82" x2="220" y2="82" stroke="#000" stroke-width="2" visibility="hidden" />
+                        <line class="ledger-below" x1="180" y1="94" x2="220" y2="94" stroke="#000" stroke-width="2" visibility="hidden" />
+                        <line class="ledger-below" x1="180" y1="106" x2="220" y2="106" stroke="#000" stroke-width="2" visibility="hidden" />
+                    </g>
+                    <g id="ledger-top-group">
+                        <line class="ledger-top" x1="180" y1="-2" x2="220" y2="-2" stroke="#000" stroke-width="2" visibility="hidden" />
+                        <line class="ledger-top" x1="180" y1="-14" x2="220" y2="-14" stroke="#000" stroke-width="2" visibility="hidden" />
+                        <line class="ledger-top" x1="180" y1="-26" x2="220" y2="-26" stroke="#000" stroke-width="2" visibility="hidden" />
+                    </g>
                     <!-- Quarter note: head + stem (C4–B4 only) -->
                     <g id="note-group" fill="#000" stroke="none">
                         <ellipse id="note-head" cx="200" cy="34" rx="10" ry="8" />
@@ -694,10 +686,27 @@
         (function () {
             'use strict';
 
+            /* Staff lines at 10, 22, 34, 46, 58 (spacing 12). Ledgers extend that grid: below 70, 82, 94... above -2, -14... */
+            const STAFF_BOTTOM_Y = 58;
+            const STAFF_TOP_Y = 10;
+            const STAFF_LINE_SPACING = 12;
+            const FIRST_LEDGER_BELOW_Y = 70;
+            const LEDGER_BELOW_THRESHOLD = 70;
+            const TREBLE_LEDGER_ABOVE_THRESHOLD = 4;
+            const BASS_LEDGER_ABOVE_THRESHOLD = 4;
+
+            function ledgerBelowY(noteY) {
+                return FIRST_LEDGER_BELOW_Y + STAFF_LINE_SPACING * Math.floor((noteY - FIRST_LEDGER_BELOW_Y) / STAFF_LINE_SPACING);
+            }
+            function ledgerAboveY(noteY) {
+                return STAFF_TOP_Y - STAFF_LINE_SPACING * Math.floor((STAFF_TOP_Y - noteY) / STAFF_LINE_SPACING);
+            }
             /* Treble staff: bottom line E4=58, space F4=52, line G4=46, space A4=40, line B4=34. Below staff: D4=64, C4=70 (ledger). */
             const STAFF_Y = { 'C': 70, 'D': 64, 'E': 58, 'F': 52, 'G': 46, 'A': 40, 'B': 34 };
             /* Treble staff octave 5: C5=28..G5=4 (space above staff), A5=-2, B5=-8 (ledger above). */
             const STAFF_Y_5 = { 'C': 28, 'D': 22, 'E': 16, 'F': 10, 'G': 4, 'A': -2, 'B': -8 };
+            /* Treble staff octave 3 (below staff): G3=88, A3=82, B3=76 (ledger below). */
+            const STAFF_Y_3_TREBLE = { 'G': 88, 'A': 82, 'B': 76 };
             /* Bass staff (F clef): lines G2=58, B2=46, D3=34, F3=22, A3=10. Spaces: C3=40, E3=28, G3=16. Above: B3=4. */
             const STAFF_Y_BASS = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
             /* All notes use letter + octave (e.g. C4, F5, D3). No letter-only notes. */
@@ -712,16 +721,38 @@
                 ['F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5'],
                 ['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'],
                 ['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5'],
+                ['B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5'],
+                ['B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
+                ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4'],
+                ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4'],
                 ['C3', 'D3', 'E3'],
                 ['C3', 'D3', 'E3', 'F3'],
                 ['C3', 'D3', 'E3', 'F3', 'G3'],
                 ['C3', 'D3', 'E3', 'F3', 'G3', 'A3'],
-                ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3']
+                ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3'],
+                ['B2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A3'],
+                ['A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3'],
+                ['G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3'],
+                ['F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3'],
+                ['E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3'],
+                ['D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'],
+                ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2'],
             ];
             const TIMER_MS = 5000;
             const NEXT_NOTE_DELAY_MS = 800;
             const MAX_NOTES = 20;
-            const NUM_LEVELS = 15;
+            const NUM_LEVELS = NOTES_BY_LEVEL.length;
+
+            const levelBtns = document.querySelector('#menu-level-btns');
+            for (let i = 1; i <= NUM_LEVELS; i++) {
+                ///            <button type="button" class="level-btn locked" id="btn-level-15" data-level="15">Taso 15: C–B</button>
+                const btn = document.createElement('button');
+                btn.classList.add('level-btn');
+                btn.setAttribute('data-level', i);
+                btn.setAttribute('id', 'btn-level-' + i);
+                btn.textContent = 'Taso ' + i + ': ' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]) + '–' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
+                levelBtns.appendChild(btn);
+            }
             function levelPassedKey(n) { return 'nuotitLevelPassed' + n; }
 
             let currentLevel = 1;
@@ -730,8 +761,8 @@
             let noteShownAt = 0;
             var noteTimeoutId = null;
             let keys = document.querySelectorAll('#piano [data-note]');
-            let ledger = document.getElementById('ledger');
-            let ledgerTop = document.getElementById('ledger-top');
+            let ledgerBelowEls = document.querySelectorAll('.ledger-below');
+            let ledgerTopEls = document.querySelectorAll('.ledger-top');
             let noteHead = document.getElementById('note-head');
             let noteStem = document.getElementById('note-stem');
             var audioCtx = null;
@@ -767,18 +798,24 @@
                 osc.stop(now + 0.4);
             }
 
+            /* On bass staff, one octave = 7 steps × 6 = 42 units. STAFF_Y_BASS is for octave 3. */
+            const BASS_OCTAVE_OFFSET = 42;
             function getStaffY(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 34;
-                if (currentLevel >= 11) return STAFF_Y_BASS[parsed.letter];
+                if (currentLevel >= 14) {
+                    var baseY = STAFF_Y_BASS[parsed.letter];
+                    return baseY + (3 - parsed.octave) * BASS_OCTAVE_OFFSET;
+                }
                 if (parsed.octave === 5 && STAFF_Y_5[parsed.letter] !== undefined) return STAFF_Y_5[parsed.letter];
+                if (parsed.octave === 3 && STAFF_Y_3_TREBLE[parsed.letter] !== undefined) return STAFF_Y_3_TREBLE[parsed.letter];
                 return STAFF_Y[parsed.letter];
             }
 
             function setNoteOnStaff(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
-                var isBass = currentLevel >= 11;
+                var isBass = currentLevel >= 14;
                 var y = getStaffY(noteFull);
                 var middleY = 34;
                 noteHead.setAttribute('cy', y);
@@ -786,24 +823,38 @@
                 noteStem.setAttribute('y2', y >= middleY ? y - 34 : y + 34);
                 noteStem.setAttribute('x1', y >= middleY ? 210 : 190);
                 noteStem.setAttribute('x2', y >= middleY ? 210 : 190);
-                ledger.setAttribute('visibility', !isBass && noteFull === 'C4' ? 'visible' : 'hidden');
-                ledger.setAttribute('y1', 70);
-                ledger.setAttribute('y2', 70);
-                var showLedgerTop = isBass && noteFull === 'B3';
-                if (!showLedgerTop && !isBass && parsed.octave === 5 && (parsed.letter === 'A' || parsed.letter === 'B')) {
-                    showLedgerTop = true;
-                    ledgerTop.setAttribute('y1', y);
-                    ledgerTop.setAttribute('y2', y);
+                /* Bottom ledgers: all staff-extension lines from 70 up to and including the line at/above the note */
+                var showLedgerBottom = y >= LEDGER_BELOW_THRESHOLD;
+                var ledgerBottomY = showLedgerBottom ? ledgerBelowY(y) : 70;
+                var numBottom = showLedgerBottom ? (ledgerBottomY - FIRST_LEDGER_BELOW_Y) / STAFF_LINE_SPACING + 1 : 0;
+                for (var i = 0; i < ledgerBelowEls.length; i++) {
+                    if (i < numBottom) {
+                        var ly = FIRST_LEDGER_BELOW_Y + STAFF_LINE_SPACING * i;
+                        ledgerBelowEls[i].setAttribute('y1', ly);
+                        ledgerBelowEls[i].setAttribute('y2', ly);
+                        ledgerBelowEls[i].setAttribute('visibility', 'visible');
+                    } else {
+                        ledgerBelowEls[i].setAttribute('visibility', 'hidden');
+                    }
                 }
-                if (!showLedgerTop) {
-                    ledgerTop.setAttribute('y1', 4);
-                    ledgerTop.setAttribute('y2', 4);
+                /* Top ledgers: all staff-extension lines from staff top down to the line at/below the note */
+                var showLedgerTop = isBass ? (y <= BASS_LEDGER_ABOVE_THRESHOLD) : (y < TREBLE_LEDGER_ABOVE_THRESHOLD);
+                var ledgerTopY = showLedgerTop ? ledgerAboveY(y) : 4;
+                var numTop = showLedgerTop ? Math.floor((STAFF_TOP_Y - ledgerTopY) / STAFF_LINE_SPACING) : 0;
+                for (var j = 0; j < ledgerTopEls.length; j++) {
+                    if (j < numTop) {
+                        var ty = STAFF_TOP_Y - STAFF_LINE_SPACING * (j + 1);
+                        ledgerTopEls[j].setAttribute('y1', ty);
+                        ledgerTopEls[j].setAttribute('y2', ty);
+                        ledgerTopEls[j].setAttribute('visibility', 'visible');
+                    } else {
+                        ledgerTopEls[j].setAttribute('visibility', 'hidden');
+                    }
                 }
-                ledgerTop.setAttribute('visibility', showLedgerTop ? 'visible' : 'hidden');
             }
 
             function setClefForLevel(level) {
-                var useBass = level >= 11;
+                var useBass = level >= 14;
                 document.getElementById('clef-g').style.display = useBass ? 'none' : '';
                 document.getElementById('clef-f').style.display = useBass ? '' : 'none';
             }
@@ -917,6 +968,9 @@
             function scientificToHelmholtz(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return noteFull;
+                if (parsed.letter === 'B') {
+                    parsed.letter = 'H';
+                }
                 if (parsed.octave === 3) {
                     return parsed.letter.toUpperCase()
                 } else if (parsed.octave > 3) {
@@ -942,7 +996,7 @@
                         4: '₄',
                         5: '₅',
                     }
-                    return parsed.letter.toLowerCase() + smallNumberMap[smallNumber];
+                    return parsed.letter.toUpperCase() + smallNumberMap[smallNumber];
                 }
                 return noteFull;
             }
