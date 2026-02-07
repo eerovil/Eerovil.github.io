@@ -97,6 +97,27 @@
     #menu-screen .level-btn:active { background: #333; }
     #menu-screen .level-btn.locked { background: #888; color: #ccc; cursor: not-allowed; }
     #menu-screen .level-btn.locked:active { background: #888; }
+    #menu-screen .menu-footer { margin-top: 1.5rem; }
+    #menu-screen .btn-reset {
+      padding: 0.4rem 1rem;
+      font-size: 0.9rem;
+      background: transparent;
+      color: #666;
+      border: 1px solid #999;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #menu-screen .btn-reset:active { background: #f0f0f0; }
+    #game-screen .btn-exit {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.9rem;
+      background: transparent;
+      color: #666;
+      border: 1px solid #999;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #game-screen .btn-exit:active { background: #f0f0f0; }
     #game-screen { display: none; flex-direction: column; height: 100%; min-height: 0; }
     #game-screen.visible { display: flex; }
     #staff-wrap {
@@ -225,12 +246,16 @@
       <button type="button" class="level-btn" id="btn-level-g" data-level="G">G-avain (diskantti) — Ennätys: <strong id="top-score-g">0</strong></button>
       <button type="button" class="level-btn" id="btn-level-f" data-level="F"><span id="btn-f-label">F-avain (bassoviivasto)</span> — Ennätys: <strong id="top-score-f">0</strong></button>
     </div>
+    <div class="menu-footer">
+      <button type="button" class="btn-reset" id="btn-reset-scores">Nollaa pisteet</button>
+    </div>
   </div>
   <div id="game-screen">
     <div id="score-bar">
       <span>Pisteet: <strong id="score">0</strong></span>
       <span id="round">Nuotti 1</span>
       <span id="level-label">G-avain</span>
+      <button type="button" class="btn-exit" id="btn-exit">Sulje</button>
     </div>
     <div id="staff-wrap">
       <div id="correct-overlay">
@@ -357,9 +382,10 @@
         var middleY = 34;
         noteHead.setAttribute('cy', y);
         noteStem.setAttribute('y1', y);
-        noteStem.setAttribute('y2', y > middleY ? y + 34 : y - 34);
-        noteStem.setAttribute('x1', y > middleY ? 210 : 190);
-        noteStem.setAttribute('x2', y > middleY ? 210 : 190);
+        /* Stem up (right side) when note on or below middle; stem down (left side) when above middle */
+        noteStem.setAttribute('y2', y >= middleY ? y - 34 : y + 34);
+        noteStem.setAttribute('x1', y >= middleY ? 210 : 190);
+        noteStem.setAttribute('x2', y >= middleY ? 210 : 190);
         if (currentLevel === 'G') {
           ledger.setAttribute('visibility', note === 'C' ? 'visible' : 'hidden');
           ledger.setAttribute('y1', 70);
@@ -411,7 +437,8 @@
       }
 
       function isFclefUnlocked() {
-        return localStorage.getItem(F_CLEF_UNLOCK_KEY) === 'true';
+        var gTop = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
+        return gTop >= UNLOCK_SCORE || localStorage.getItem(F_CLEF_UNLOCK_KEY) === 'true';
       }
 
       function showMenu() {
@@ -453,9 +480,6 @@
         var key = topScoreKey(currentLevel);
         var top = Math.max(parseInt(localStorage.getItem(key) || '0', 10), score);
         localStorage.setItem(key, String(top));
-        if (score >= UNLOCK_SCORE) {
-          localStorage.setItem(F_CLEF_UNLOCK_KEY, 'true');
-        }
         showMenu();
       }
 
@@ -514,10 +538,22 @@
         navigator.serviceWorker.register('sw.js').catch(function () {});
       }
 
+      function resetScores() {
+        if (prompt('Kirjoita "nollaa" jos haluat nollata ennätykset.') != 'nollaa') {
+          return;
+        }
+        localStorage.removeItem(topScoreKey('G'));
+        localStorage.removeItem(topScoreKey('F'));
+        localStorage.removeItem(F_CLEF_UNLOCK_KEY);
+        showMenu();
+      }
+
       document.getElementById('btn-level-g').addEventListener('click', function () { startGame('G'); });
       document.getElementById('btn-level-f').addEventListener('click', function () {
         if (isFclefUnlocked()) startGame('F');
       });
+      document.getElementById('btn-reset-scores').addEventListener('click', resetScores);
+      document.getElementById('btn-exit').addEventListener('click', showMenu);
       showMenu();
     })();
   </script>
