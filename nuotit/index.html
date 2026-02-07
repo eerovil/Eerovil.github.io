@@ -71,7 +71,7 @@
       inset: 0;
     }
     #menu-screen h1 { font-size: 2rem; margin: 0 0 1rem; }
-    #menu-screen .top-score { font-size: 1.5rem; margin-bottom: 2rem; }
+    #menu-screen .level-btn strong { font-weight: 700; }
     #menu-screen .btn-play {
       padding: 0.75rem 2rem;
       font-size: 1.25rem;
@@ -220,11 +220,10 @@
 <body>
   <div id="menu-screen">
     <h1>Nuotit</h1>
-    <p class="top-score">Ennätys: <strong id="top-score">0</strong></p>
     <p class="level-label">Valitse taso</p>
     <div class="level-btns">
-      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G-avain (diskantti)</button>
-      <button type="button" class="level-btn" id="btn-level-f" data-level="F">F-avain (bassoviivasto)</button>
+      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G-avain (diskantti) — Ennätys: <strong id="top-score-g">0</strong></button>
+      <button type="button" class="level-btn" id="btn-level-f" data-level="F"><span id="btn-f-label">F-avain (bassoviivasto)</span> — Ennätys: <strong id="top-score-f">0</strong></button>
     </div>
   </div>
   <div id="game-screen">
@@ -304,7 +303,7 @@
       const MAX_SCORE = MAX_NOTES * 10;
       const UNLOCK_PERCENT = 0.8;
       const UNLOCK_SCORE = Math.floor(MAX_SCORE * UNLOCK_PERCENT);
-      const TOP_SCORE_KEY = 'nuotitTopScore';
+      function topScoreKey(level) { return 'nuotitTopScore' + level; }
       const F_CLEF_UNLOCK_KEY = 'nuotitFclefUnlocked';
 
       /* Bass clef: C3=40, D3=34, E3=28, F3=22, G3=16, A3=10, B3=4 (ledger above) */
@@ -418,17 +417,20 @@
       function showMenu() {
         document.getElementById('menu-screen').style.display = 'flex';
         document.getElementById('game-screen').classList.remove('visible');
-        var top = parseInt(localStorage.getItem(TOP_SCORE_KEY) || '0', 10);
-        document.getElementById('top-score').textContent = top;
+        var topG = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
+        var topF = parseInt(localStorage.getItem(topScoreKey('F')) || '0', 10);
+        document.getElementById('top-score-g').textContent = topG;
+        document.getElementById('top-score-f').textContent = topF;
         var unlocked = isFclefUnlocked();
         var btnF = document.getElementById('btn-level-f');
+        var labelF = document.getElementById('btn-f-label');
         if (unlocked) {
           btnF.classList.remove('locked');
-          btnF.textContent = 'F-avain (bassoviivasto)';
+          labelF.textContent = 'F-avain (bassoviivasto)';
           btnF.disabled = false;
         } else {
           btnF.classList.add('locked');
-          btnF.textContent = 'F-avain — saavuta 80 % avataksesi';
+          labelF.textContent = 'F-avain — saavuta 80 % avataksesi';
           btnF.disabled = true;
         }
       }
@@ -448,8 +450,9 @@
       }
 
       function endGame() {
-        var top = Math.max(parseInt(localStorage.getItem(TOP_SCORE_KEY) || '0', 10), score);
-        localStorage.setItem(TOP_SCORE_KEY, String(top));
+        var key = topScoreKey(currentLevel);
+        var top = Math.max(parseInt(localStorage.getItem(key) || '0', 10), score);
+        localStorage.setItem(key, String(top));
         if (score >= UNLOCK_SCORE) {
           localStorage.setItem(F_CLEF_UNLOCK_KEY, 'true');
         }
