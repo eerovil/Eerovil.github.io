@@ -13,8 +13,13 @@
   <script type="text/javascript">
     // If cache busting param is not in the url, add it
     if (!window.location.search.includes('cache=')) {
-      window.location.search += 'cache=' + Date.now();
+        console.log('adding cache busting param');
+        setTimeout(() => {
+            console.log('redirecting to', window.location.href + '?cache=' + Date.now());
+            window.location.href = window.location.href + '?cache=' + Date.now();
+        }, 100);
     } else {
+        console.log('cache busting param already exists');
         // remove without reloading the page
         window.history.replaceState({}, document.title, window.location.pathname);
     }
