@@ -74,6 +74,35 @@
       color: #666;
       margin-bottom: 0.15rem;
     }
+    #game-over-overlay, #level-complete-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.96);
+      z-index: 20;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s;
+    }
+    #game-over-overlay.visible, #level-complete-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    #game-over-overlay h2 { color: #dc2626; margin: 0 0 0.5rem; font-size: 1.5rem; }
+    #level-complete-overlay h2 { color: #16a34a; margin: 0 0 0.5rem; font-size: 1.5rem; }
+    #game-over-overlay .correct-note-msg { font-size: 1.1rem; margin-bottom: 1rem; }
+    #game-over-overlay .btn-menu, #level-complete-overlay .btn-menu {
+      padding: 0.5rem 1.5rem;
+      font-size: 1rem;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
     #time-visualizer {
       height: 6px;
       background: #e5e5e5;
@@ -165,19 +194,35 @@
     #piano-wrap {
       padding: 0.5rem 0;
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: flex-end;
+      width: 100%;
+      overflow: visible;
     }
     #piano {
-      display: flex;
-      position: relative;
-      width: 65vw;
+      width: 100vw;
       height: 40vmin;
       min-height: 80px;
       max-height: 140px;
-      border-radius: 8px;
-      overflow: visible;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      border-radius: 0;
+      overflow-x: hidden;
+      overflow-y: hidden;
+      box-shadow: none;
+      -webkit-overflow-scrolling: touch;
+      margin-left: 0;
+    }
+    .piano-inner {
+      display: flex;
+      width: 195vw;
+      height: 100%;
+      min-width: 0;
+    }
+    .octave {
+      display: flex;
+      position: relative;
+      width: 65vw;
+      flex-shrink: 0;
+      height: 100%;
     }
     .white-key {
       flex: 1;
@@ -211,11 +256,11 @@
     .black-key:active { background: linear-gradient(180deg, #555 0%, #333 100%); }
     .black-key.correct { background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%); }
     .black-key.wrong { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
-    .black-key[data-key="C#"] { left: calc(100% / 7 * 1 - 3.5%); }
-    .black-key[data-key="D#"] { left: calc(100% / 7 * 2 - 3.5%); }
-    .black-key[data-key="F#"] { left: calc(100% / 7 * 4 - 3.5%); }
-    .black-key[data-key="G#"] { left: calc(100% / 7 * 5 - 3.5%); }
-    .black-key[data-key="A#"] { left: calc(100% / 7 * 6 - 3.5%); }
+    .octave .black-key[data-key="C#"] { left: calc(100% / 7 * 1 - 3.5%); }
+    .octave .black-key[data-key="D#"] { left: calc(100% / 7 * 2 - 3.5%); }
+    .octave .black-key[data-key="F#"] { left: calc(100% / 7 * 4 - 3.5%); }
+    .octave .black-key[data-key="G#"] { left: calc(100% / 7 * 5 - 3.5%); }
+    .octave .black-key[data-key="A#"] { left: calc(100% / 7 * 6 - 3.5%); }
     #staff-wrap { position: relative; }
     #correct-overlay {
       position: absolute;
@@ -270,9 +315,12 @@
   <div id="menu-screen">
     <h1>Nuotit</h1>
     <p class="level-label">Valitse taso</p>
-    <div class="level-btns">
-      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G-avain (diskantti) — Ennätys: <strong id="top-score-g">0</strong></button>
-      <button type="button" class="level-btn" id="btn-level-f" data-level="F"><span id="btn-f-label">F-avain (bassoviivasto)</span> — Ennätys: <strong id="top-score-f">0</strong></button>
+    <div class="level-btns" id="menu-level-btns">
+      <button type="button" class="level-btn" id="btn-level-1" data-level="1">Taso 1: c¹, d¹, e¹</button>
+      <button type="button" class="level-btn locked" id="btn-level-2" data-level="2">Taso 2: c¹-f¹</button>
+      <button type="button" class="level-btn locked" id="btn-level-3" data-level="3">Taso 3: c¹-g¹</button>
+      <button type="button" class="level-btn locked" id="btn-level-4" data-level="4">Taso 4: c¹-a¹</button>
+      <button type="button" class="level-btn locked" id="btn-level-5" data-level="5">Taso 5: c¹-h¹</button>
     </div>
     <div class="menu-footer">
       <button type="button" class="btn-reset" id="btn-reset-scores">Nollaa pisteet</button>
@@ -281,18 +329,26 @@
   </div>
   <div id="game-screen">
     <div id="time-visualizer-wrap">
-      <div class="time-label">Aikaa 0 pisteeseen</div>
+      <div class="time-label">Aikaa jäljellä</div>
       <div id="time-visualizer">
         <div id="time-visualizer-bar"></div>
       </div>
     </div>
     <div id="score-bar">
-      <span>Pisteet: <strong id="score">0</strong></span>
-      <span id="round">Nuotti 1</span>
-      <span id="level-label">G-avain</span>
+      <span id="round">Nuotti 1 / 20</span>
+      <span id="level-label">Taso 1</span>
       <button type="button" class="btn-exit" id="btn-exit">Sulje</button>
     </div>
     <div id="staff-wrap">
+      <div id="game-over-overlay">
+        <h2>Hävisit</h2>
+        <p class="correct-note-msg" id="game-over-correct-msg">Oikea nuotti oli: C</p>
+        <button type="button" class="btn-menu" id="game-over-btn-menu">Valikko</button>
+      </div>
+      <div id="level-complete-overlay">
+        <h2>Taso läpäisty!</h2>
+        <button type="button" class="btn-menu" id="level-complete-btn-menu">Valikko</button>
+      </div>
       <div id="correct-overlay">
         <p class="correct-msg" id="correct-msg">Oikein! +5</p>
         <p class="next-msg">Seuraava nuotti...</p>
@@ -332,18 +388,50 @@
     </div>
     <div id="piano-wrap">
       <div id="piano">
-        <div class="black-key" data-key="C#" data-note="C#"></div>
-        <div class="black-key" data-key="D#" data-note="D#"></div>
-        <div class="black-key" data-key="F#" data-note="F#"></div>
-        <div class="black-key" data-key="G#" data-note="G#"></div>
-        <div class="black-key" data-key="A#" data-note="A#"></div>
-        <div class="white-key" data-key="C" data-note="C"></div>
-        <div class="white-key" data-key="D" data-note="D"></div>
-        <div class="white-key" data-key="E" data-note="E"></div>
-        <div class="white-key" data-key="F" data-note="F"></div>
-        <div class="white-key" data-key="G" data-note="G"></div>
-        <div class="white-key" data-key="A" data-note="A"></div>
-        <div class="white-key" data-key="B" data-note="B"></div>
+        <div class="piano-inner">
+          <div class="octave">
+            <div class="white-key" data-key="C" data-note="C3"></div>
+            <div class="white-key" data-key="D" data-note="D3"></div>
+            <div class="white-key" data-key="E" data-note="E3"></div>
+            <div class="white-key" data-key="F" data-note="F3"></div>
+            <div class="white-key" data-key="G" data-note="G3"></div>
+            <div class="white-key" data-key="A" data-note="A3"></div>
+            <div class="white-key" data-key="B" data-note="B3"></div>
+            <div class="black-key" data-key="C#" data-note="C#3"></div>
+            <div class="black-key" data-key="D#" data-note="D#3"></div>
+            <div class="black-key" data-key="F#" data-note="F#3"></div>
+            <div class="black-key" data-key="G#" data-note="G#3"></div>
+            <div class="black-key" data-key="A#" data-note="A#3"></div>
+          </div>
+          <div class="octave">
+            <div class="white-key" data-key="C" data-note="C4"></div>
+            <div class="white-key" data-key="D" data-note="D4"></div>
+            <div class="white-key" data-key="E" data-note="E4"></div>
+            <div class="white-key" data-key="F" data-note="F4"></div>
+            <div class="white-key" data-key="G" data-note="G4"></div>
+            <div class="white-key" data-key="A" data-note="A4"></div>
+            <div class="white-key" data-key="B" data-note="B4"></div>
+            <div class="black-key" data-key="C#" data-note="C#4"></div>
+            <div class="black-key" data-key="D#" data-note="D#4"></div>
+            <div class="black-key" data-key="F#" data-note="F#4"></div>
+            <div class="black-key" data-key="G#" data-note="G#4"></div>
+            <div class="black-key" data-key="A#" data-note="A#4"></div>
+          </div>
+          <div class="octave">
+            <div class="white-key" data-key="C" data-note="C5"></div>
+            <div class="white-key" data-key="D" data-note="D5"></div>
+            <div class="white-key" data-key="E" data-note="E5"></div>
+            <div class="white-key" data-key="F" data-note="F5"></div>
+            <div class="white-key" data-key="G" data-note="G5"></div>
+            <div class="white-key" data-key="A" data-note="A5"></div>
+            <div class="white-key" data-key="B" data-note="B5"></div>
+            <div class="black-key" data-key="C#" data-note="C#5"></div>
+            <div class="black-key" data-key="D#" data-note="D#5"></div>
+            <div class="black-key" data-key="F#" data-note="F#5"></div>
+            <div class="black-key" data-key="G#" data-note="G#5"></div>
+            <div class="black-key" data-key="A#" data-note="A#5"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -353,35 +441,29 @@
 
       /* Treble staff: bottom line E4=58, space F4=52, line G4=46, space A4=40, line B4=34. Below staff: D4=64, C4=70 (ledger). */
       const STAFF_Y = { 'C': 70, 'D': 64, 'E': 58, 'F': 52, 'G': 46, 'A': 40, 'B': 34 };
-      const NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-      const FREE_MS = 500;
-      const WRONG_PENALTY_MS = 1000;
-      const SCORE_MS_10 = 1000;
-      const SCORE_MS_1 = 10000;
-      const NEXT_NOTE_DELAY_MS = 1200;
+      const NOTES_BY_LEVEL = [
+        ['C', 'D', 'E'],
+        ['C', 'D', 'E', 'F'],
+        ['C', 'D', 'E', 'F', 'G'],
+        ['C', 'D', 'E', 'F', 'G', 'A'],
+        ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+      ];
+      const TIMER_MS = 5000;
+      const NEXT_NOTE_DELAY_MS = 800;
       const MAX_NOTES = 20;
-      const MAX_SCORE = MAX_NOTES * 10;
-      const UNLOCK_PERCENT = 0.8;
-      const UNLOCK_SCORE = Math.floor(100 * UNLOCK_PERCENT);
-      function topScoreKey(level) { return 'nuotitTopScore' + level; }
-      const F_CLEF_UNLOCK_KEY = 'nuotitFclefUnlocked';
+      const NUM_LEVELS = 5;
+      function levelPassedKey(n) { return 'nuotitLevelPassed' + n; }
 
-      /* Bass clef: C3=40, D3=34, E3=28, F3=22, G3=16, A3=10, B3=4 (ledger above) */
-      const STAFF_Y_BASS = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
-
-      let score = 0;
-      let currentLevel = 'G';
+      let currentLevel = 1;
       let round = 0;
       let currentNote = null;
       let noteShownAt = 0;
-      let wrongGuessesThisNote = 0;
+      var noteTimeoutId = null;
       let keys = document.querySelectorAll('#piano [data-note]');
       let ledger = document.getElementById('ledger');
       let ledgerTop = document.getElementById('ledger-top');
       let noteHead = document.getElementById('note-head');
       let noteStem = document.getElementById('note-stem');
-      let clefG = document.getElementById('clef-g');
-      let clefF = document.getElementById('clef-f');
       var audioCtx = null;
 
       var NOTE_FREQ = {
@@ -390,13 +472,17 @@
         'A#': 466.16, 'B': 493.88
       };
 
-      function playPianoNote(note) {
-        var freq = NOTE_FREQ[note];
+      function parseNoteFull(noteFull) {
+        var m = noteFull.match(/^([A-G]#?)(\d)$/);
+        if (!m) return null;
+        return { letter: m[1], octave: parseInt(m[2], 10) };
+      }
+      function playPianoNote(noteFull) {
+        var parsed = parseNoteFull(noteFull);
+        if (!parsed) return;
+        var freq = NOTE_FREQ[parsed.letter];
         if (!freq) return;
-        // On F clef, play a octave lower
-        if (currentLevel === 'F') {
-          freq /= 2;
-        }
+        freq = freq * Math.pow(2, parsed.octave - 4);
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         var now = audioCtx.currentTime;
         var osc = audioCtx.createOscillator();
@@ -412,24 +498,17 @@
       }
 
       function setNoteOnStaff(note) {
-        var staffY = currentLevel === 'G' ? STAFF_Y : STAFF_Y_BASS;
-        var y = staffY[note];
+        var y = STAFF_Y[note];
         var middleY = 34;
         noteHead.setAttribute('cy', y);
         noteStem.setAttribute('y1', y);
-        /* Stem up (right side) when note on or below middle; stem down (left side) when above middle */
         noteStem.setAttribute('y2', y >= middleY ? y - 34 : y + 34);
         noteStem.setAttribute('x1', y >= middleY ? 210 : 190);
         noteStem.setAttribute('x2', y >= middleY ? 210 : 190);
-        if (currentLevel === 'G') {
-          ledger.setAttribute('visibility', note === 'C' ? 'visible' : 'hidden');
-          ledger.setAttribute('y1', 70);
-          ledger.setAttribute('y2', 70);
-          ledgerTop.setAttribute('visibility', 'hidden');
-        } else {
-          ledger.setAttribute('visibility', 'hidden');
-          ledgerTop.setAttribute('visibility', 'hidden');
-        }
+        ledger.setAttribute('visibility', note === 'C' ? 'visible' : 'hidden');
+        ledger.setAttribute('y1', 70);
+        ledger.setAttribute('y2', 70);
+        ledgerTop.setAttribute('visibility', 'hidden');
       }
 
       var overlayEl = document.getElementById('correct-overlay');
@@ -448,13 +527,19 @@
 
       function updateTimeVisualizer() {
         if (!currentNote || !timeVisualizerBar) return;
-        var rawElapsed = performance.now() - noteShownAt;
-        var effectiveMs = Math.max(0, rawElapsed - FREE_MS) + wrongGuessesThisNote * WRONG_PENALTY_MS;
-        var timeLeft = Math.max(0, SCORE_MS_1 - effectiveMs);
-        var pct = (timeLeft / SCORE_MS_1) * 100;
+        var elapsed = performance.now() - noteShownAt;
+        var timeLeft = Math.max(0, TIMER_MS - elapsed);
+        var pct = (timeLeft / TIMER_MS) * 100;
         timeVisualizerBar.style.width = pct + '%';
         if (pct > 0) {
           timeVisualizerRafId = requestAnimationFrame(updateTimeVisualizer);
+        }
+      }
+
+      function clearNoteTimeout() {
+        if (noteTimeoutId != null) {
+          clearTimeout(noteTimeoutId);
+          noteTimeoutId = null;
         }
       }
 
@@ -465,9 +550,10 @@
         pianoEl.classList.remove('waiting');
       }
 
-      function showCorrectOverlay(points, onComplete) {
+      function showCorrectOverlay(onComplete) {
+        clearNoteTimeout();
         cancelTimeVisualizer();
-        correctMsgEl.textContent = 'Oikein! +' + points;
+        correctMsgEl.textContent = 'Oikein!';
         progressBarEl.classList.remove('filling');
         progressBarEl.style.width = '0';
         overlayEl.classList.add('visible');
@@ -480,83 +566,91 @@
         }, NEXT_NOTE_DELAY_MS);
       }
 
+      function clearCorrectKeyHighlight() {
+        keys.forEach(function (k) { k.classList.remove('correct'); });
+      }
+
+      function gameOver(correctNote) {
+        clearNoteTimeout();
+        cancelTimeVisualizer();
+        clearCorrectKeyHighlight();
+        var correctKeyEl = document.querySelector('#piano [data-note="' + correctNote + '4"]');
+        if (correctKeyEl) correctKeyEl.classList.add('correct');
+        document.getElementById('game-over-correct-msg').textContent = 'Oikea nuotti oli: ' + correctNote;
+        document.getElementById('game-over-overlay').classList.add('visible');
+      }
+
+      function levelComplete() {
+        clearNoteTimeout();
+        cancelTimeVisualizer();
+        localStorage.setItem(levelPassedKey(currentLevel), 'true');
+        document.getElementById('level-complete-overlay').classList.add('visible');
+      }
+
       function pickRandomNote() {
+        clearNoteTimeout();
         cancelTimeVisualizer();
         hideCorrectOverlay();
+        clearCorrectKeyHighlight();
+        document.getElementById('game-over-overlay').classList.remove('visible');
+        document.getElementById('level-complete-overlay').classList.remove('visible');
+        var notes = NOTES_BY_LEVEL[currentLevel - 1];
         var pool = currentNote === null
-          ? NOTES.slice()
-          : NOTES.filter(function (n) { return n !== currentNote; });
+          ? notes.slice()
+          : notes.filter(function (n) { return n !== currentNote; });
         currentNote = pool[Math.floor(Math.random() * pool.length)];
         noteShownAt = performance.now();
-        wrongGuessesThisNote = 0;
         round += 1;
         document.getElementById('round').textContent = 'Nuotti ' + round + ' / ' + MAX_NOTES;
+        document.getElementById('level-label').textContent = 'Taso ' + currentLevel;
         setNoteOnStaff(currentNote);
         timeVisualizerBar.style.width = '100%';
         timeVisualizerRafId = requestAnimationFrame(updateTimeVisualizer);
+        noteTimeoutId = setTimeout(function () { gameOver(currentNote); }, TIMER_MS);
       }
 
-      function isFclefUnlocked() {
-        var gTop = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
-        console.log('gTop', gTop);
-        console.log('UNLOCK_SCORE', UNLOCK_SCORE);
-        return gTop >= UNLOCK_SCORE || localStorage.getItem(F_CLEF_UNLOCK_KEY) === 'true';
+      function isLevelUnlocked(levelNum) {
+        if (levelNum === 1) return true;
+        return localStorage.getItem(levelPassedKey(levelNum - 1)) === 'true';
       }
 
       function showMenu() {
+        clearNoteTimeout();
         cancelTimeVisualizer();
+        clearCorrectKeyHighlight();
         document.getElementById('menu-screen').style.display = 'flex';
         document.getElementById('game-screen').classList.remove('visible');
-        console.log('showMenu', topScoreKey('G'));
-        var topG = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
-        var topF = parseInt(localStorage.getItem(topScoreKey('F')) || '0', 10);
-        document.getElementById('top-score-g').textContent = topG;
-        document.getElementById('top-score-f').textContent = topF;
-        console.log('topG', localStorage.getItem(topScoreKey('G')));
-        var unlocked = isFclefUnlocked();
-        var btnF = document.getElementById('btn-level-f');
-        var labelF = document.getElementById('btn-f-label');
-        if (unlocked) {
-          btnF.classList.remove('locked');
-          labelF.textContent = 'F-avain (bassoviivasto)';
-          btnF.disabled = false;
-        } else {
-          btnF.classList.add('locked');
-          labelF.textContent = 'F-avain — saavuta 80 % avataksesi';
-          btnF.disabled = true;
+        document.getElementById('game-over-overlay').classList.remove('visible');
+        document.getElementById('level-complete-overlay').classList.remove('visible');
+        for (var i = 1; i <= NUM_LEVELS; i++) {
+          var btn = document.getElementById('btn-level-' + i);
+          var passed = localStorage.getItem(levelPassedKey(i)) === 'true';
+          var unlocked = isLevelUnlocked(i);
+          if (unlocked) {
+            btn.classList.remove('locked');
+            btn.disabled = false;
+            btn.textContent = 'Taso ' + i + (i === 1 ? ': c¹, d¹, e¹' : i === 2 ? ': c¹-f¹' : i === 3 ? ': c¹-g¹' : i === 4 ? ': c¹-a¹' : ': c¹-h¹') + (passed ? ' ✓' : '');
+          } else {
+            btn.classList.add('locked');
+            btn.disabled = true;
+            btn.textContent = 'Taso ' + i + ' — läpäise taso ' + (i - 1);
+          }
         }
       }
 
-      function startGame(level) {
-        currentLevel = level || 'G';
+      function startGame(levelNum) {
+        currentLevel = parseInt(levelNum, 10);
         document.getElementById('menu-screen').style.display = 'none';
         document.getElementById('game-screen').classList.add('visible');
-        clefG.style.display = currentLevel === 'G' ? 'block' : 'none';
-        clefF.style.display = currentLevel === 'F' ? 'block' : 'none';
-        document.getElementById('level-label').textContent = currentLevel === 'G' ? 'G-avain' : 'F-avain';
-        score = 0;
         round = 0;
         currentNote = null;
-        document.getElementById('score').textContent = '0';
+        var pianoEl = document.getElementById('piano');
+        if (pianoEl) {
+          var oneOctaveVw = 65;
+          var targetVw = 20;
+          pianoEl.scrollLeft = (oneOctaveVw - targetVw) / 100 * window.innerWidth;
+        }
         pickRandomNote();
-      }
-
-      function endGame() {
-        var key = topScoreKey(currentLevel);
-        var top = Math.max(parseInt(localStorage.getItem(key) || '0', 10), score);
-        localStorage.setItem(key, String(top));
-        showMenu();
-      }
-
-      function pointsForTimeBase(effectiveMs) {
-        if (effectiveMs <= SCORE_MS_10) return 10;
-        if (effectiveMs >= SCORE_MS_1) return 0;
-        return Math.round(10 - (9 * (effectiveMs - SCORE_MS_10)) / (SCORE_MS_1 - SCORE_MS_10));
-      }
-
-      function pointsForTime(effectiveMs) {
-        // Convert points to percentage of MAX_SCORE
-        return Math.round(pointsForTimeBase(effectiveMs) / MAX_SCORE * 100);
       }
 
       function giveFeedback(keyEl, correct) {
@@ -568,25 +662,23 @@
         }, 280);
       }
 
-      function onKeyPress(note) {
+      function onKeyPress(noteFull) {
         if (!currentNote) return;
-        playPianoNote(note);
-        const keyEl = document.querySelector('#piano [data-note="' + note + '"]');
-        const correct = note === currentNote;
-        giveFeedback(keyEl, correct);
+        if (document.getElementById('game-over-overlay').classList.contains('visible') ||
+            document.getElementById('level-complete-overlay').classList.contains('visible')) return;
+        playPianoNote(noteFull);
+        var keyEl = document.querySelector('#piano [data-note="' + noteFull + '"]');
+        var parsed = parseNoteFull(noteFull);
+        var correct = parsed && parsed.letter === currentNote && parsed.octave === 4;
+        if (keyEl) giveFeedback(keyEl, correct);
         if (correct) {
-          var rawElapsed = performance.now() - noteShownAt;
-          var effectiveMs = Math.max(0, rawElapsed - FREE_MS) + wrongGuessesThisNote * WRONG_PENALTY_MS;
-          var points = pointsForTime(effectiveMs);
-          score += points;
-          document.getElementById('score').textContent = score;
           if (round >= MAX_NOTES) {
-            showCorrectOverlay(points, endGame);
+            showCorrectOverlay(levelComplete);
           } else {
-            showCorrectOverlay(points, pickRandomNote);
+            showCorrectOverlay(pickRandomNote);
           }
         } else {
-          wrongGuessesThisNote += 1;
+          gameOver(currentNote);
         }
       }
 
@@ -604,19 +696,24 @@
       }
 
       function resetScores() {
-        if (prompt('Kirjoita "nollaa" jos haluat nollata ennätykset.') != 'nollaa') {
+        if (prompt('Kirjoita "nollaa" jos haluat nollata tasojen läpäisyt.') !== 'nollaa') {
           return;
         }
-        localStorage.removeItem(topScoreKey('G'));
-        localStorage.removeItem(topScoreKey('F'));
-        localStorage.removeItem(F_CLEF_UNLOCK_KEY);
+        for (var i = 1; i <= NUM_LEVELS; i++) {
+          localStorage.removeItem(levelPassedKey(i));
+        }
         showMenu();
       }
 
-      document.getElementById('btn-level-g').addEventListener('click', function () { startGame('G'); });
-      document.getElementById('btn-level-f').addEventListener('click', function () {
-        if (isFclefUnlocked()) startGame('F');
-      });
+      document.getElementById('game-over-btn-menu').addEventListener('click', showMenu);
+      document.getElementById('level-complete-btn-menu').addEventListener('click', showMenu);
+      for (var i = 1; i <= NUM_LEVELS; i++) {
+        (function (levelNum) {
+          document.getElementById('btn-level-' + levelNum).addEventListener('click', function () {
+            if (isLevelUnlocked(levelNum)) startGame(levelNum);
+          });
+        })(i);
+      }
       document.getElementById('btn-reset-scores').addEventListener('click', resetScores);
       document.getElementById('btn-refresh').addEventListener('click', function () { location.reload(); });
       document.getElementById('btn-exit').addEventListener('click', showMenu);
