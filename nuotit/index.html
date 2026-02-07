@@ -328,7 +328,7 @@
       const MAX_NOTES = 20;
       const MAX_SCORE = MAX_NOTES * 10;
       const UNLOCK_PERCENT = 0.8;
-      const UNLOCK_SCORE = Math.floor(MAX_SCORE * UNLOCK_PERCENT);
+      const UNLOCK_SCORE = Math.floor(100 * UNLOCK_PERCENT);
       function topScoreKey(level) { return 'nuotitTopScore' + level; }
       const F_CLEF_UNLOCK_KEY = 'nuotitFclefUnlocked';
 
@@ -439,16 +439,20 @@
 
       function isFclefUnlocked() {
         var gTop = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
+        console.log('gTop', gTop);
+        console.log('UNLOCK_SCORE', UNLOCK_SCORE);
         return gTop >= UNLOCK_SCORE || localStorage.getItem(F_CLEF_UNLOCK_KEY) === 'true';
       }
 
       function showMenu() {
         document.getElementById('menu-screen').style.display = 'flex';
         document.getElementById('game-screen').classList.remove('visible');
+        console.log('showMenu', topScoreKey('G'));
         var topG = parseInt(localStorage.getItem(topScoreKey('G')) || '0', 10);
         var topF = parseInt(localStorage.getItem(topScoreKey('F')) || '0', 10);
         document.getElementById('top-score-g').textContent = topG;
         document.getElementById('top-score-f').textContent = topF;
+        console.log('topG', localStorage.getItem(topScoreKey('G')));
         var unlocked = isFclefUnlocked();
         var btnF = document.getElementById('btn-level-f');
         var labelF = document.getElementById('btn-f-label');
