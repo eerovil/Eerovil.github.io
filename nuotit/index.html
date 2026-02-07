@@ -854,7 +854,7 @@
             }
 
             function setClefForLevel(level) {
-                var useBass = level >= 14;
+                var useBass = level >= 15;
                 document.getElementById('clef-g').style.display = useBass ? 'none' : '';
                 document.getElementById('clef-f').style.display = useBass ? '' : 'none';
             }
@@ -971,8 +971,11 @@
                 if (parsed.letter === 'B') {
                     parsed.letter = 'H';
                 }
-                if (parsed.octave === 3) {
+                if (parsed.octave === 2) {
                     return parsed.letter.toUpperCase()
+                }
+                if (parsed.octave === 3) {
+                    return parsed.letter.toLowerCase()
                 } else if (parsed.octave > 3) {
                     const smallNumber = parsed.octave - 3;
                     const smallNumberMap = {
@@ -987,8 +990,8 @@
                         9: '⁹',
                     }
                     return parsed.letter.toLowerCase() + smallNumberMap[smallNumber];
-                } else if (parsed.octave < 3) {
-                    const smallNumber = 3 - parsed.octave;
+                } else if (parsed.octave < 2) {
+                    const smallNumber = 2 - parsed.octave;
                     const smallNumberMap = {
                         1: '₁',
                         2: '₂',
