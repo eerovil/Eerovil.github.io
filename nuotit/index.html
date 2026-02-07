@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, height=device-height, viewport-fit=cover, user-scalable=no">
@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="screen-orientation" content="landscape">
-  <title>Nuotit – Note Game</title>
+  <title>Nuotit – Nuottipeli</title>
   <link rel="manifest" href="manifest.json">
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -25,7 +25,7 @@
     }
     @media (orientation: portrait) {
       body::after {
-        content: 'Rotate your device to landscape';
+        content: 'Käännä laite vaakasuoraan';
         position: fixed;
         inset: 0;
         display: flex;
@@ -211,23 +211,23 @@
 <body>
   <div id="menu-screen">
     <h1>Nuotit</h1>
-    <p class="top-score">Top score: <strong id="top-score">0</strong></p>
-    <p class="level-label">Choose level</p>
+    <p class="top-score">Ennätys: <strong id="top-score">0</strong></p>
+    <p class="level-label">Valitse taso</p>
     <div class="level-btns">
-      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G clef (treble)</button>
-      <button type="button" class="level-btn" id="btn-level-f" data-level="F">F clef (bass)</button>
+      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G-avain (diskantti)</button>
+      <button type="button" class="level-btn" id="btn-level-f" data-level="F">F-avain (bassoviivasto)</button>
     </div>
   </div>
   <div id="game-screen">
     <div id="score-bar">
-      <span>Score: <strong id="score">0</strong></span>
-      <span id="round">Note 1</span>
-      <span id="level-label">G clef</span>
+      <span>Pisteet: <strong id="score">0</strong></span>
+      <span id="round">Nuotti 1</span>
+      <span id="level-label">G-avain</span>
     </div>
     <div id="staff-wrap">
       <div id="correct-overlay">
-        <p class="correct-msg" id="correct-msg">Correct! +5</p>
-        <p class="next-msg">Next note...</p>
+        <p class="correct-msg" id="correct-msg">Oikein! +5</p>
+        <p class="next-msg">Seuraava nuotti...</p>
         <div class="next-progress">
           <div class="next-progress-bar" id="next-progress-bar"></div>
         </div>
@@ -376,7 +376,7 @@
       }
 
       function showCorrectOverlay(points, onComplete) {
-        correctMsgEl.textContent = 'Correct! +' + points;
+        correctMsgEl.textContent = 'Oikein! +' + points;
         progressBarEl.classList.remove('filling');
         progressBarEl.style.width = '0';
         overlayEl.classList.add('visible');
@@ -398,7 +398,7 @@
         noteShownAt = performance.now();
         wrongGuessesThisNote = 0;
         round += 1;
-        document.getElementById('round').textContent = 'Note ' + round + ' / ' + MAX_NOTES;
+        document.getElementById('round').textContent = 'Nuotti ' + round + ' / ' + MAX_NOTES;
         setNoteOnStaff(currentNote);
       }
 
@@ -415,11 +415,11 @@
         var btnF = document.getElementById('btn-level-f');
         if (unlocked) {
           btnF.classList.remove('locked');
-          btnF.textContent = 'F clef (bass)';
+          btnF.textContent = 'F-avain (bassoviivasto)';
           btnF.disabled = false;
         } else {
           btnF.classList.add('locked');
-          btnF.textContent = 'F clef — get 80% to unlock';
+          btnF.textContent = 'F-avain — saavuta 80 % avataksesi';
           btnF.disabled = true;
         }
       }
@@ -430,7 +430,7 @@
         document.getElementById('game-screen').classList.add('visible');
         clefG.style.display = currentLevel === 'G' ? 'block' : 'none';
         clefF.style.display = currentLevel === 'F' ? 'block' : 'none';
-        document.getElementById('level-label').textContent = currentLevel === 'G' ? 'G clef' : 'F clef';
+        document.getElementById('level-label').textContent = currentLevel === 'G' ? 'G-avain' : 'F-avain';
         score = 0;
         round = 0;
         currentNote = null;
@@ -447,10 +447,15 @@
         showMenu();
       }
 
-      function pointsForTime(effectiveMs) {
+      function pointsForTimeBase(effectiveMs) {
         if (effectiveMs <= SCORE_MS_10) return 10;
         if (effectiveMs >= SCORE_MS_1) return 0;
         return Math.round(10 - (9 * (effectiveMs - SCORE_MS_10)) / (SCORE_MS_1 - SCORE_MS_10));
+      }
+
+      function pointsForTime(effectiveMs) {
+        // Convert points to percentage of MAX_SCORE
+        return Math.round(pointsForTimeBase(effectiveMs) / MAX_SCORE * 100);
       }
 
       function giveFeedback(keyEl, correct) {
