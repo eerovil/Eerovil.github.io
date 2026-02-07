@@ -10,6 +10,12 @@
   <meta name="screen-orientation" content="landscape">
   <title>Nuotit – Nuottipeli</title>
   <link rel="manifest" href="manifest.json">
+  <script type="text/javascript">
+    // If cache busting param is not in the url, add it
+    if (!window.location.search.includes('cache=')) {
+      window.location.search += 'cache=' + Date.now();
+    }
+  </script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
