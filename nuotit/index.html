@@ -73,6 +73,21 @@
       cursor: pointer;
     }
     #menu-screen .btn-play:active { background: #333; }
+    #menu-screen .level-label { margin: 0 0 0.5rem; font-size: 0.95rem; color: #666; }
+    #menu-screen .level-btns { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+    #menu-screen .level-btn {
+      padding: 0.6rem 1.5rem;
+      font-size: 1rem;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      min-width: 180px;
+    }
+    #menu-screen .level-btn:active { background: #333; }
+    #menu-screen .level-btn.locked { background: #888; color: #ccc; cursor: not-allowed; }
+    #menu-screen .level-btn.locked:active { background: #888; }
     #game-screen { display: none; flex-direction: column; height: 100%; min-height: 0; }
     #game-screen.visible { display: flex; }
     #staff-wrap {
@@ -98,7 +113,8 @@
     #piano {
       display: flex;
       position: relative;
-      height: 22vmin;
+      width: 65vw;
+      height: 40vmin;
       min-height: 80px;
       max-height: 140px;
       border-radius: 8px;
@@ -106,9 +122,8 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
     .white-key {
-      width: 10vmin;
-      min-width: 36px;
-      max-width: 64px;
+      flex: 1;
+      min-width: 0;
       height: 100%;
       background: linear-gradient(180deg, #fff 0%, #f0f0f0 100%);
       border: 1px solid #999;
@@ -123,9 +138,7 @@
     .white-key.correct { background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%); }
     .white-key.wrong { background: linear-gradient(180deg, #f87171 0%, #ef4444 100%); }
     .black-key {
-      width: 6vmin;
-      min-width: 22px;
-      max-width: 38px;
+      width: 7%;
       height: 65%;
       background: linear-gradient(180deg, #333 0%, #111 100%);
       border: 1px solid #000;
@@ -135,23 +148,16 @@
       user-select: none;
       position: absolute;
       z-index: 2;
-      margin-left: -3vmin;
+      top: 0;
     }
     .black-key:active { background: linear-gradient(180deg, #555 0%, #333 100%); }
     .black-key.correct { background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%); }
     .black-key.wrong { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
-    .black-key[data-key="C#"] { left: 9.5vmin; }
-    .black-key[data-key="D#"] { left: 19.5vmin; }
-    .black-key[data-key="F#"] { left: 39.5vmin; }
-    .black-key[data-key="G#"] { left: 49.5vmin; }
-    .black-key[data-key="A#"] { left: 59.5vmin; }
-    @media (min-width: 600px) {
-      .black-key[data-key="C#"] { left: 10vmin; }
-      .black-key[data-key="D#"] { left: 20vmin; }
-      .black-key[data-key="F#"] { left: 40vmin; }
-      .black-key[data-key="G#"] { left: 50vmin; }
-      .black-key[data-key="A#"] { left: 60vmin; }
-    }
+    .black-key[data-key="C#"] { left: calc(100% / 7 * 1 - 3.5%); }
+    .black-key[data-key="D#"] { left: calc(100% / 7 * 2 - 3.5%); }
+    .black-key[data-key="F#"] { left: calc(100% / 7 * 4 - 3.5%); }
+    .black-key[data-key="G#"] { left: calc(100% / 7 * 5 - 3.5%); }
+    .black-key[data-key="A#"] { left: calc(100% / 7 * 6 - 3.5%); }
     #staff-wrap { position: relative; }
     #correct-overlay {
       position: absolute;
@@ -206,12 +212,17 @@
   <div id="menu-screen">
     <h1>Nuotit</h1>
     <p class="top-score">Top score: <strong id="top-score">0</strong></p>
-    <button type="button" class="btn-play" id="btn-play">Play</button>
+    <p class="level-label">Choose level</p>
+    <div class="level-btns">
+      <button type="button" class="level-btn" id="btn-level-g" data-level="G">G clef (treble)</button>
+      <button type="button" class="level-btn" id="btn-level-f" data-level="F">F clef (bass)</button>
+    </div>
   </div>
   <div id="game-screen">
     <div id="score-bar">
       <span>Score: <strong id="score">0</strong></span>
       <span id="round">Note 1</span>
+      <span id="level-label">G clef</span>
     </div>
     <div id="staff-wrap">
       <div id="correct-overlay">
@@ -230,12 +241,19 @@
           <line x1="0" y1="34" x2="400" y2="34" stroke="#000" stroke-width="2"/>
           <line x1="0" y1="46" x2="400" y2="46" stroke="#000" stroke-width="2"/>
           <line x1="0" y1="58" x2="400" y2="58" stroke="#000" stroke-width="2"/>
-          <!-- G clef (treble) - from Capa_1 SVG; scale then translate so it stays in view -->
-          <g transform="scale(0.20) translate(-42.64, -37)" fill="#000">
+          <!-- G clef (treble) -->
+          <g id="clef-g" transform="scale(0.20) translate(-42.64, -37)" fill="#000">
             <path d="M165.156,176.583c-16.007,20.073-24.81,40.457-26.128,60.599c-1.475,22.705,5.003,44.281,19.273,64.099c15.118,21.119,34.22,32.572,56.759,34.047c7.574,0.497,14.7,0.288,21.276-0.597c1.35,7.649,2.709,15.252,3.971,22.781c1.567,10.176,2.124,19.008,1.644,26.241c-0.661,9.998-3.779,18.178-9.294,24.321c-5.963,6.628-13.396,9.533-22.826,8.92c-4.105-0.269-7.722-1.326-10.904-3.201c3.745-0.862,7.145-2.469,10.119-4.785c5.761-4.469,8.989-10.965,9.521-19.28c0.503-7.999-1.529-14.995-6.067-20.778c-4.827-6.332-11.389-9.818-19.5-10.355c-8.283-0.545-15.797,2.806-21.957,9.807c-5.474,6.199-8.54,13.493-9.061,21.68c-0.797,12.227,3.847,22.67,13.85,31.026c8.771,7.321,19.272,11.421,31.22,12.202c6.792,0.445,13.354-0.337,19.466-2.328c5.021-1.635,9.842-4.12,14.366-7.37c10.94-7.878,16.88-18.182,17.692-30.656c0.63-9.506,0.148-20.767-1.454-33.603l-4.464-28.918c11.425-3.814,21.007-10.707,28.473-20.462c7.926-10.303,12.391-22.47,13.296-36.167c1.103-16.823-2.913-32.079-11.962-45.34c-9.918-14.543-23.52-22.478-40.406-23.582c-1.948-0.126-3.988-0.112-6.12,0.046l-4.744-35.516c13.168-11.257,23.832-25.409,31.723-42.092c7.798-16.574,12.383-34.514,13.608-53.305c0.718-11.046-0.797-24.754-4.508-40.761c-5.086-21.718-12.335-32.586-22.201-33.238c-3.49-0.218-7.33,1.557-12.015,5.677c-11.377,10.285-19.656,22.728-24.609,36.96c-3.833,10.87-6.368,25.403-7.548,43.208c-0.579,8.869,0.826,23.942,4.328,46.059C189.015,150.517,173.957,165.542,165.156,176.583z M263.455,274.041c0,11.63-5.743,31.162-13.754,35.931l-8.264-62.556C253.949,249.816,263.455,260.833,263.455,274.041z M222.484,104.798c0.739-11.339,3.589-23.646,8.478-36.562c6.196-16.16,12.071-21.043,15.895-22.293c1.05-0.336,2.079-0.471,3.157-0.399c5.001,0.331,9.982,2.447,9.125,15.659c-0.722,11.197-5.17,23.064-13.188,35.281c-6.452,9.851-13.95,18.074-22.31,24.501C222.471,116.385,222.072,110.961,222.484,104.798z M216.199,181.34l3.266,26.908c-9.077,3.75-16.99,9.682-23.568,17.665c-7.578,9.289-11.79,19.532-12.499,30.429c-0.735,11.305,1.797,21.664,7.514,30.741c2.974,4.837,7.063,9.137,11.76,12.643c7.7,5.727,16.575,5.294,17.985,2.177c1.429-3.106-3.845-7.991-7.993-14.515c-2.36-3.688-3.506-8.123-3.506-13.337c0-11.073,6.672-20.578,16.186-24.802l8.909,69.388c-4.745,0.982-10.055,1.295-15.824,0.922c-14.815-0.974-28.044-7.069-39.347-18.153c-11.806-11.51-17.1-24.197-16.149-38.78C164.754,235.014,182.669,207.692,216.199,181.34z"/>
           </g>
-          <!-- Ledger line for C4 (when needed) -->
+          <!-- F clef (bass) - viewBox 0 0 512 512 -->
+          <g id="clef-f" fill="#000" transform="scale(0.084) translate(-1.5, 100.2)" style="display:none">
+            <path d="M176.014,0l-2.823,0.01C89.091,1.164,20.78,63.557,15.904,118.564c-3.125,35.072,4.693,63.941,22.568,83.494c16.307,17.803,39.765,26.836,69.727,26.836c31.095,0,61.603-29.77,61.603-60.106c0-30.803-25.076-55.869-55.888-55.869c-16.569,0-27.575,7.323-34.858,12.179c-2.853,1.892-5.796,3.854-7.121,3.854c-0.446,0-1.477-1.184-2.458-5.635c-3.399-15.335,1.902-33.644,14.212-48.98c10.399-12.978,34.858-34.726,81.876-34.726c65.67,0,101.833,52.894,101.833,148.952c0,192.852-165.703,271.845-216.483,291.459c-10.398,4.016-13.778,12.716-12.492,19.553C39.828,507.002,45.947,512,53.686,512c2.448,0,5.037-0.496,7.657-1.477l5.807-2.165C262.916,435.82,362.19,326.247,362.19,182.648C362.19,57.164,265.688,0,176.014,0z"/>
+            <path d="M455.486,126.84c22.771,0,41.282-18.522,41.282-41.292c0-22.76-18.512-41.271-41.282-41.271c-22.759,0-41.281,18.511-41.281,41.271C414.205,108.318,432.726,126.84,455.486,126.84z"/>
+            <path d="M455.486,211.365c-22.759,0-41.281,18.522-41.281,41.282c0,22.77,18.522,41.281,41.281,41.281c22.771,0,41.282-18.511,41.282-41.281C496.768,229.887,478.256,211.365,455.486,211.365z"/>
+          </g>
+          <!-- Ledger: bottom for G (C), top for F (B) -->
           <line id="ledger" x1="180" y1="70" x2="220" y2="70" stroke="#000" stroke-width="2" visibility="hidden"/>
+          <line id="ledger-top" x1="180" y1="4" x2="220" y2="4" stroke="#000" stroke-width="2" visibility="hidden"/>
           <!-- Quarter note: head + stem (C4–B4 only) -->
           <g id="note-group" fill="#000" stroke="none">
             <ellipse id="note-head" cx="200" cy="34" rx="10" ry="8"/>
@@ -274,17 +292,28 @@
       const SCORE_MS_1 = 5000;
       const NEXT_NOTE_DELAY_MS = 1200;
       const MAX_NOTES = 20;
+      const MAX_SCORE = MAX_NOTES * 10;
+      const UNLOCK_PERCENT = 0.8;
+      const UNLOCK_SCORE = Math.floor(MAX_SCORE * UNLOCK_PERCENT);
       const TOP_SCORE_KEY = 'nuotitTopScore';
+      const F_CLEF_UNLOCK_KEY = 'nuotitFclefUnlocked';
+
+      /* Bass clef: C3=40, D3=34, E3=28, F3=22, G3=16, A3=10, B3=4 (ledger above) */
+      const STAFF_Y_BASS = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
 
       let score = 0;
+      let currentLevel = 'G';
       let round = 0;
       let currentNote = null;
       let noteShownAt = 0;
       let wrongGuessesThisNote = 0;
       let keys = document.querySelectorAll('#piano [data-note]');
       let ledger = document.getElementById('ledger');
+      let ledgerTop = document.getElementById('ledger-top');
       let noteHead = document.getElementById('note-head');
       let noteStem = document.getElementById('note-stem');
+      let clefG = document.getElementById('clef-g');
+      let clefF = document.getElementById('clef-f');
       var audioCtx = null;
 
       var NOTE_FREQ = {
@@ -296,6 +325,10 @@
       function playPianoNote(note) {
         var freq = NOTE_FREQ[note];
         if (!freq) return;
+        // On F clef, play a octave lower
+        if (currentLevel === 'F') {
+          freq /= 2;
+        }
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         var now = audioCtx.currentTime;
         var osc = audioCtx.createOscillator();
@@ -311,15 +344,23 @@
       }
 
       function setNoteOnStaff(note) {
-        const y = STAFF_Y[note];
+        var staffY = currentLevel === 'G' ? STAFF_Y : STAFF_Y_BASS;
+        var y = staffY[note];
+        var middleY = 34;
         noteHead.setAttribute('cy', y);
         noteStem.setAttribute('y1', y);
-        noteStem.setAttribute('y2', y > 34 ? y + 34 : y - 34);
-        noteStem.setAttribute('x1', y > 34 ? 210 : 190);
-        noteStem.setAttribute('x2', y > 34 ? 210 : 190);
-        ledger.setAttribute('visibility', note === 'C' ? 'visible' : 'hidden');
-        ledger.setAttribute('y1', 70);
-        ledger.setAttribute('y2', 70);
+        noteStem.setAttribute('y2', y > middleY ? y + 34 : y - 34);
+        noteStem.setAttribute('x1', y > middleY ? 210 : 190);
+        noteStem.setAttribute('x2', y > middleY ? 210 : 190);
+        if (currentLevel === 'G') {
+          ledger.setAttribute('visibility', note === 'C' ? 'visible' : 'hidden');
+          ledger.setAttribute('y1', 70);
+          ledger.setAttribute('y2', 70);
+          ledgerTop.setAttribute('visibility', 'hidden');
+        } else {
+          ledger.setAttribute('visibility', 'hidden');
+          ledgerTop.setAttribute('visibility', 'hidden');
+        }
       }
 
       var overlayEl = document.getElementById('correct-overlay');
@@ -361,16 +402,35 @@
         setNoteOnStaff(currentNote);
       }
 
+      function isFclefUnlocked() {
+        return localStorage.getItem(F_CLEF_UNLOCK_KEY) === 'true';
+      }
+
       function showMenu() {
         document.getElementById('menu-screen').style.display = 'flex';
         document.getElementById('game-screen').classList.remove('visible');
         var top = parseInt(localStorage.getItem(TOP_SCORE_KEY) || '0', 10);
         document.getElementById('top-score').textContent = top;
+        var unlocked = isFclefUnlocked();
+        var btnF = document.getElementById('btn-level-f');
+        if (unlocked) {
+          btnF.classList.remove('locked');
+          btnF.textContent = 'F clef (bass)';
+          btnF.disabled = false;
+        } else {
+          btnF.classList.add('locked');
+          btnF.textContent = 'F clef — get 80% to unlock';
+          btnF.disabled = true;
+        }
       }
 
-      function startGame() {
+      function startGame(level) {
+        currentLevel = level || 'G';
         document.getElementById('menu-screen').style.display = 'none';
         document.getElementById('game-screen').classList.add('visible');
+        clefG.style.display = currentLevel === 'G' ? 'block' : 'none';
+        clefF.style.display = currentLevel === 'F' ? 'block' : 'none';
+        document.getElementById('level-label').textContent = currentLevel === 'G' ? 'G clef' : 'F clef';
         score = 0;
         round = 0;
         currentNote = null;
@@ -381,12 +441,15 @@
       function endGame() {
         var top = Math.max(parseInt(localStorage.getItem(TOP_SCORE_KEY) || '0', 10), score);
         localStorage.setItem(TOP_SCORE_KEY, String(top));
+        if (score >= UNLOCK_SCORE) {
+          localStorage.setItem(F_CLEF_UNLOCK_KEY, 'true');
+        }
         showMenu();
       }
 
       function pointsForTime(effectiveMs) {
         if (effectiveMs <= SCORE_MS_10) return 10;
-        if (effectiveMs >= SCORE_MS_1) return 1;
+        if (effectiveMs >= SCORE_MS_1) return 0;
         return Math.round(10 - (9 * (effectiveMs - SCORE_MS_10)) / (SCORE_MS_1 - SCORE_MS_10));
       }
 
@@ -434,7 +497,10 @@
         navigator.serviceWorker.register('sw.js').catch(function () {});
       }
 
-      document.getElementById('btn-play').addEventListener('click', startGame);
+      document.getElementById('btn-level-g').addEventListener('click', function () { startGame('G'); });
+      document.getElementById('btn-level-f').addEventListener('click', function () {
+        if (isFclefUnlocked()) startGame('F');
+      });
       showMenu();
     })();
   </script>
