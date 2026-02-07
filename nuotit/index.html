@@ -97,7 +97,7 @@
     #menu-screen .level-btn:active { background: #333; }
     #menu-screen .level-btn.locked { background: #888; color: #ccc; cursor: not-allowed; }
     #menu-screen .level-btn.locked:active { background: #888; }
-    #menu-screen .menu-footer { margin-top: 1.5rem; }
+    #menu-screen .menu-footer { margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
     #menu-screen .btn-reset {
       padding: 0.4rem 1rem;
       font-size: 0.9rem;
@@ -248,6 +248,7 @@
     </div>
     <div class="menu-footer">
       <button type="button" class="btn-reset" id="btn-reset-scores">Nollaa pisteet</button>
+      <button type="button" class="btn-reset" id="btn-refresh">Päivitä</button>
     </div>
   </div>
   <div id="game-screen">
@@ -321,8 +322,8 @@
       const NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
       const FREE_MS = 500;
       const WRONG_PENALTY_MS = 1000;
-      const SCORE_MS_10 = 700;
-      const SCORE_MS_1 = 5000;
+      const SCORE_MS_10 = 1000;
+      const SCORE_MS_1 = 10000;
       const NEXT_NOTE_DELAY_MS = 1200;
       const MAX_NOTES = 20;
       const MAX_SCORE = MAX_NOTES * 10;
@@ -553,6 +554,7 @@
         if (isFclefUnlocked()) startGame('F');
       });
       document.getElementById('btn-reset-scores').addEventListener('click', resetScores);
+      document.getElementById('btn-refresh').addEventListener('click', function () { location.reload(); });
       document.getElementById('btn-exit').addEventListener('click', showMenu);
       showMenu();
     })();
