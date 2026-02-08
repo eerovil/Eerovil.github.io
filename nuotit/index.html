@@ -12,12 +12,6 @@
     <title>Nuotit – Nuottipeli</title>
     <link rel="manifest" href="manifest.json?cache=123">
     <script type="text/javascript">
-        // With query param test=1, all levels are unlocked
-        if (window.location.search.includes('test=1')) {
-            for (let i = 1; i <= 600; i++) {
-                localStorage.setItem(levelPassedKey(i), 'true');
-            }
-        }
         // If cache busting param is not in the url, add it
         if (!window.location.search.includes('cache=')) {
             console.log('adding cache busting param');
@@ -694,6 +688,7 @@
             const LEDGER_BELOW_THRESHOLD = 70;
             const TREBLE_LEDGER_ABOVE_THRESHOLD = 4;
             const BASS_LEDGER_ABOVE_THRESHOLD = 4;
+            const FIRST_BASS_LEVEL = 16;
 
             function ledgerBelowY(noteY) {
                 return FIRST_LEDGER_BELOW_Y + STAFF_LINE_SPACING * Math.floor((noteY - FIRST_LEDGER_BELOW_Y) / STAFF_LINE_SPACING);
@@ -754,6 +749,13 @@
                 levelBtns.appendChild(btn);
             }
             function levelPassedKey(n) { return 'nuotitLevelPassed' + n; }
+
+            // With query param test=1, all levels are unlocked
+            if (window.location.search.includes('test=1')) {
+                for (let i = 1; i <= 600; i++) {
+                    localStorage.setItem(levelPassedKey(i), 'true');
+                }
+            }
 
             let currentLevel = 1;
             let round = 0;
@@ -841,7 +843,7 @@
             function getStaffY(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 34;
-                if (currentLevel >= 14) {
+                if (currentLevel >= FIRST_BASS_LEVEL) {
                     var baseY = STAFF_Y_BASS[parsed.letter];
                     return baseY + (3 - parsed.octave) * BASS_OCTAVE_OFFSET;
                 }
@@ -853,7 +855,7 @@
             function setNoteOnStaff(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
-                var isBass = currentLevel >= 14;
+                var isBass = currentLevel >= FIRST_BASS_LEVEL;
                 var y = getStaffY(noteFull);
                 var middleY = 34;
                 noteHead.setAttribute('cy', y);
@@ -892,7 +894,7 @@
             }
 
             function setClefForLevel(level) {
-                var useBass = level >= 15;
+                var useBass = level >= FIRST_BASS_LEVEL;
                 document.getElementById('clef-g').style.display = useBass ? 'none' : '';
                 document.getElementById('clef-f').style.display = useBass ? '' : 'none';
             }
@@ -998,6 +1000,7 @@
                 timeVisualizerBar.style.width = '100%';
                 timeVisualizerRafId = requestAnimationFrame(updateTimeVisualizer);
                 noteTimeoutId = setTimeout(function () { gameOver(currentNote); }, TIMER_MS);
+                console.log('currentNote', currentNote);
             }
 
             function isLevelUnlocked(levelNum) {
