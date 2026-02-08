@@ -798,6 +798,44 @@
                 osc.stop(now + 0.4);
             }
 
+            /** Play a short jingle. notes: array of [noteFull, durationSec] e.g. [['C4', 0.15], ['E4', 0.15], ['G4', 0.3]] */
+            function playJingle(notes) {
+                if (!notes.length) return;
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                var now = audioCtx.currentTime;
+                var t = 0;
+                for (var i = 0; i < notes.length; i++) {
+                    var noteFull = notes[i][0];
+                    var dur = notes[i][1];
+                    var parsed = parseNoteFull(noteFull);
+                    if (!parsed) { t += dur; continue; }
+                    var freq = NOTE_FREQ[parsed.letter];
+                    if (!freq) { t += dur; continue; }
+                    freq = freq * Math.pow(2, parsed.octave - 4);
+                    (function (start, frequency, duration) {
+                        var osc = audioCtx.createOscillator();
+                        var gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(frequency, start);
+                        gain.gain.setValueAtTime(0, start);
+                        gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+                        osc.start(start);
+                        osc.stop(start + duration);
+                    })(now + t, freq, dur);
+                    t += dur;
+                }
+            }
+
+            function playWinJingle() {
+                playJingle([['E4', 0.12], ['G4', 0.12], ['C5', 0.12], ['E5', 0.25]]);
+            }
+            function playFailureJingle() {
+                playJingle([['G3', 0.2], ['E3', 0.35], ['C#3', 0.15], ['D#3', 0.15]]);
+            }
+
             /* On bass staff, one octave = 7 steps × 6 = 42 units. STAFF_Y_BASS is for octave 3. */
             const BASS_OCTAVE_OFFSET = 42;
             function getStaffY(noteFull) {
@@ -929,6 +967,7 @@
                 }
                 document.getElementById('game-over-correct-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
                 document.getElementById('game-over-overlay').classList.add('visible');
+                playFailureJingle();
             }
 
             function levelComplete() {
@@ -936,6 +975,7 @@
                 cancelTimeVisualizer();
                 localStorage.setItem(levelPassedKey(currentLevel), 'true');
                 document.getElementById('level-complete-overlay').classList.add('visible');
+                playWinJingle();
             }
 
             function pickRandomNote() {
