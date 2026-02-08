@@ -751,7 +751,7 @@
                 ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2'],
             ];
             const TIMER_MS = 10000;
-            const NEXT_NOTE_DELAY_MS = 1000;
+            const NEXT_NOTE_DELAY_MS = 500;
             const MAX_NOTES = 20;
             const NUM_LEVELS = NOTES_BY_LEVEL.length;
 
@@ -1015,6 +1015,7 @@
                 cancelTimeVisualizer();
                 localStorage.setItem(levelPassedKey(currentLevel), 'true');
                 setLevelBest(currentLevel, MAX_NOTES);
+                lastFailedNote = null;
                 document.getElementById('level-complete-overlay').classList.add('visible');
                 playWinJingle();
             }
@@ -1035,6 +1036,11 @@
                 if (currentNote === null && lastFailedNote && notes.indexOf(lastFailedNote) !== -1 && pool.indexOf(lastFailedNote) !== -1) {
                     currentNote = lastFailedNote;
                     lastFailedNote = null;
+                } else if (currentNote === null && !lastFailedNote && currentLevel > 1) {
+                    var prevNotes = NOTES_BY_LEVEL[currentLevel - 2];
+                    var newInLevel = pool.filter(function (n) { return prevNotes.indexOf(n) === -1; });
+                    if (newInLevel.length > 0) pool = newInLevel;
+                    currentNote = pool[Math.floor(Math.random() * pool.length)];
                 } else {
                     currentNote = pool[Math.floor(Math.random() * pool.length)];
                 }
@@ -1131,8 +1137,10 @@
                     if (i === latestUnlocked && fillEl) {
                         var best = getLevelBest(i);
                         fillEl.style.width = (best / MAX_NOTES * 100) + '%';
-                    } else if (fillEl) {
+                    } else if (fillEl && !unlocked) {
                         fillEl.style.width = '0%';
+                    } else if (fillEl && unlocked) {
+                        fillEl.style.width = '100%';
                     }
                 }
             }
