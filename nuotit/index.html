@@ -226,28 +226,45 @@
         }
 
         #menu-screen .level-btn {
+            position: relative;
+            overflow: hidden;
             padding: 0.6rem 0.75rem;
             font-size: 0.95rem;
-            background: #111;
+            background: #444;
             color: #fff;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             min-width: 0;
+            min-height: 3rem;
+        }
+        #menu-screen .level-btn .level-btn-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: #111;
+            border-radius: 8px 0 0 8px;
+            pointer-events: none;
+        }
+        #menu-screen .level-btn .level-btn-text {
+            position: relative;
+            z-index: 1;
         }
 
         #menu-screen .level-btn:active {
-            background: #333;
+            background: #555;
         }
 
         #menu-screen .level-btn.locked {
-            background: #888;
+            background: #666;
             color: #ccc;
             cursor: not-allowed;
         }
 
         #menu-screen .level-btn.locked:active {
-            background: #888;
+            background: #666;
         }
 
         #menu-screen .menu-footer {
@@ -745,10 +762,25 @@
                 btn.classList.add('level-btn');
                 btn.setAttribute('data-level', i);
                 btn.setAttribute('id', 'btn-level-' + i);
-                btn.textContent = 'Taso ' + i + ': ' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]) + '–' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
+                var fill = document.createElement('span');
+                fill.className = 'level-btn-fill';
+                var text = document.createElement('span');
+                text.className = 'level-btn-text';
+                text.textContent = 'Taso ' + i + ': ' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]) + '–' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
+                btn.appendChild(fill);
+                btn.appendChild(text);
                 levelBtns.appendChild(btn);
             }
             function levelPassedKey(n) { return 'nuotitLevelPassed' + n; }
+            function levelBestKey(n) { return 'nuotitLevelBest' + n; }
+            function getLevelBest(levelNum) {
+                var s = localStorage.getItem(levelBestKey(levelNum));
+                return s != null ? parseInt(s, 10) : 0;
+            }
+            function setLevelBest(levelNum, score) {
+                var prev = getLevelBest(levelNum);
+                if (score > prev) localStorage.setItem(levelBestKey(levelNum), String(score));
+            }
 
             // With query param test=1, all levels are unlocked
             if (window.location.search.includes('test=1')) {
@@ -760,6 +792,10 @@
             let currentLevel = 1;
             let round = 0;
             let currentNote = null;
+            /** Notes already shown this round (each level note must appear at least once before repeating) */
+            var notesShownThisRound = {};
+            /** Note the player last failed on; we try to show it first when starting the next level */
+            var lastFailedNote = null;
             let noteShownAt = 0;
             var noteTimeoutId = null;
             let keys = document.querySelectorAll('#piano [data-note]');
@@ -969,6 +1005,8 @@
                 }
                 document.getElementById('game-over-correct-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
                 document.getElementById('game-over-overlay').classList.add('visible');
+                lastFailedNote = correctNote;
+                setLevelBest(currentLevel, round);
                 playFailureJingle();
             }
 
@@ -976,6 +1014,7 @@
                 clearNoteTimeout();
                 cancelTimeVisualizer();
                 localStorage.setItem(levelPassedKey(currentLevel), 'true');
+                setLevelBest(currentLevel, MAX_NOTES);
                 document.getElementById('level-complete-overlay').classList.add('visible');
                 playWinJingle();
             }
@@ -988,10 +1027,18 @@
                 document.getElementById('game-over-overlay').classList.remove('visible');
                 document.getElementById('level-complete-overlay').classList.remove('visible');
                 var notes = NOTES_BY_LEVEL[currentLevel - 1];
-                var pool = currentNote === null
-                    ? notes.slice()
+                var unseen = notes.filter(function (n) { return !notesShownThisRound[n]; });
+                var pool = unseen.length > 0
+                    ? (currentNote === null ? unseen : unseen.filter(function (n) { return n !== currentNote; }))
                     : notes.filter(function (n) { return n !== currentNote; });
-                currentNote = pool[Math.floor(Math.random() * pool.length)];
+                if (pool.length === 0) pool = unseen.length ? unseen : notes.slice();
+                if (currentNote === null && lastFailedNote && notes.indexOf(lastFailedNote) !== -1 && pool.indexOf(lastFailedNote) !== -1) {
+                    currentNote = lastFailedNote;
+                    lastFailedNote = null;
+                } else {
+                    currentNote = pool[Math.floor(Math.random() * pool.length)];
+                }
+                notesShownThisRound[currentNote] = true;
                 noteShownAt = performance.now();
                 round += 1;
                 document.getElementById('round').textContent = 'Nuotti ' + round + ' / ' + MAX_NOTES;
@@ -1062,18 +1109,30 @@
                         NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
                     return ": " + scientificFirst + '–' + scientificLast;
                 }
+                var latestUnlocked = 0;
+                for (var L = NUM_LEVELS; L >= 1; L--) {
+                    if (isLevelUnlocked(L)) { latestUnlocked = L; break; }
+                }
                 for (var i = 1; i <= NUM_LEVELS; i++) {
                     var btn = document.getElementById('btn-level-' + i);
+                    var textEl = btn.querySelector('.level-btn-text');
+                    var fillEl = btn.querySelector('.level-btn-fill');
                     var passed = localStorage.getItem(levelPassedKey(i)) === 'true';
                     var unlocked = isLevelUnlocked(i);
                     if (unlocked) {
                         btn.classList.remove('locked');
                         btn.disabled = false;
-                        btn.textContent = 'Taso ' + i + getLevelLabel(i) + (passed ? ' ✓' : '');
+                        textEl.textContent = 'Taso ' + i + getLevelLabel(i) + (passed ? ' ✓' : '');
                     } else {
                         btn.classList.add('locked');
                         btn.disabled = true;
-                        btn.textContent = 'Taso ' + i + ' — läpäise taso ' + (i - 1);
+                        textEl.textContent = 'Taso ' + i + ' — läpäise taso ' + (i - 1);
+                    }
+                    if (i === latestUnlocked && fillEl) {
+                        var best = getLevelBest(i);
+                        fillEl.style.width = (best / MAX_NOTES * 100) + '%';
+                    } else if (fillEl) {
+                        fillEl.style.width = '0%';
                     }
                 }
             }
@@ -1098,6 +1157,7 @@
                 setClefForLevel(currentLevel);
                 round = 0;
                 currentNote = null;
+                notesShownThisRound = {};
                 var pianoEl = document.getElementById('piano');
                 if (pianoEl) {
                     var notes = NOTES_BY_LEVEL[currentLevel - 1];
@@ -1154,6 +1214,7 @@
                 }
                 for (var i = 1; i <= NUM_LEVELS; i++) {
                     localStorage.removeItem(levelPassedKey(i));
+                    localStorage.removeItem(levelBestKey(i));
                 }
                 showMenu();
             }
