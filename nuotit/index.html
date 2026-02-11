@@ -1008,7 +1008,7 @@
                     correctKeyEl.classList.add('correct');
                     correctKeyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
-                progress = Math.max(0, progress - 1);
+                progress = Math.max(0, progress - 3);
                 updateProgressDisplay();
                 document.getElementById('wrong-overlay-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
                 document.getElementById('wrong-overlay').classList.add('visible');
