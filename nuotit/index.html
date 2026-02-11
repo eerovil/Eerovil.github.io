@@ -554,7 +554,6 @@
             <div id="wrong-overlay">
                 <h2 id="wrong-overlay-title">Väärin</h2>
                 <p class="correct-note-msg" id="wrong-overlay-msg">Oikea nuotti oli: C</p>
-                <button type="button" class="btn-menu" id="wrong-overlay-btn-menu">Valikko</button>
             </div>
             <div id="level-complete-overlay">
                 <h2>Taso läpäisty!</h2>
@@ -1002,6 +1001,7 @@
 
             var wrongOverlayTimeoutId = null;
             function showWrongOverlay(correctNote) {
+                delete notesShownThisRound[correctNote];
                 clearCorrectKeyHighlight();
                 var correctKeyEl = document.querySelector('#piano [data-note="' + correctNote + '"]');
                 if (correctKeyEl) {
@@ -1277,7 +1277,6 @@
                 showMenu();
             }
 
-            document.getElementById('wrong-overlay-btn-menu').addEventListener('click', showMenu);
             document.getElementById('level-complete-btn-menu').addEventListener('click', showMenu);
             for (var i = 1; i <= NUM_LEVELS; i++) {
                 (function (levelNum) {
