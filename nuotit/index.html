@@ -63,7 +63,7 @@
             padding: 0.5rem 1rem;
         }
 
-        #game-screen>#time-visualizer-wrap {
+        #game-screen>#progress-wrap {
             flex-shrink: 0;
         }
 
@@ -93,18 +93,33 @@
             font-variant-numeric: tabular-nums;
         }
 
-        #time-visualizer-wrap {
+        #progress-wrap {
             padding: 0.15rem 0;
             width: 100%;
         }
 
-        #time-visualizer-wrap .time-label {
+        #progress-wrap .progress-label {
             font-size: 0.75rem;
             color: #666;
             margin-bottom: 0.15rem;
         }
 
-        #game-over-overlay,
+        #level-progress-bar {
+            height: 8px;
+            background: #e5e5e5;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #level-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #16a34a;
+            border-radius: 4px;
+            transition: width 0.2s ease;
+        }
+
+        #wrong-overlay,
         #level-complete-overlay {
             position: absolute;
             inset: 0;
@@ -119,13 +134,13 @@
             transition: opacity 0.2s ease, visibility 0.2s;
         }
 
-        #game-over-overlay.visible,
+        #wrong-overlay.visible,
         #level-complete-overlay.visible {
             opacity: 1;
             visibility: visible;
         }
 
-        #game-over-overlay h2 {
+        #wrong-overlay h2 {
             color: #dc2626;
             margin: 0 0 0.5rem;
             font-size: 1.5rem;
@@ -137,12 +152,12 @@
             font-size: 1.5rem;
         }
 
-        #game-over-overlay .correct-note-msg {
+        #wrong-overlay .correct-note-msg {
             font-size: 1.1rem;
             margin-bottom: 1rem;
         }
 
-        #game-over-overlay .btn-menu,
+        #wrong-overlay .btn-menu,
         #level-complete-overlay .btn-menu {
             padding: 0.5rem 1.5rem;
             font-size: 1rem;
@@ -151,21 +166,6 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-        }
-
-        #time-visualizer {
-            height: 6px;
-            background: #e5e5e5;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        #time-visualizer-bar {
-            height: 100%;
-            width: 100%;
-            background: #16a34a 100%;
-            border-radius: 3px;
-            transition: width 0.05s linear;
         }
 
         #menu-screen {
@@ -385,6 +385,29 @@
             background: linear-gradient(180deg, #e8e8e8 0%, #ddd 100%);
         }
 
+        .white-key .key-hold-fill,
+        .black-key .key-hold-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            transition: height 0.2s ease-out;
+        }
+        .white-key .key-hold-fill {
+            background: rgba(0, 0, 0, 0.25);
+        }
+        .black-key .key-hold-fill {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .white-key.holding .key-hold-fill,
+        .black-key.holding .key-hold-fill {
+            height: 100%;
+            transition: height 0.5s linear;
+        }
+
         .white-key.correct {
             background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
         }
@@ -516,22 +539,22 @@
         </div>
     </div>
     <div id="game-screen">
-        <div id="time-visualizer-wrap">
-            <div class="time-label">Aikaa jäljellä</div>
-            <div id="time-visualizer">
-                <div id="time-visualizer-bar"></div>
+        <div id="progress-wrap">
+            <div class="progress-label">Edistyminen</div>
+            <div id="level-progress-bar">
+                <div id="level-progress-fill"></div>
             </div>
         </div>
         <div id="score-bar">
-            <span id="round">Nuotti 1 / 20</span>
+            <span id="progress-text">0 / 20</span>
             <span id="level-label">Taso 1</span>
             <button type="button" class="btn-exit" id="btn-exit">Sulje</button>
         </div>
         <div id="staff-wrap">
-            <div id="game-over-overlay">
-                <h2>Hävisit</h2>
-                <p class="correct-note-msg" id="game-over-correct-msg">Oikea nuotti oli: C</p>
-                <button type="button" class="btn-menu" id="game-over-btn-menu">Valikko</button>
+            <div id="wrong-overlay">
+                <h2 id="wrong-overlay-title">Väärin</h2>
+                <p class="correct-note-msg" id="wrong-overlay-msg">Oikea nuotti oli: C</p>
+                <button type="button" class="btn-menu" id="wrong-overlay-btn-menu">Valikko</button>
             </div>
             <div id="level-complete-overlay">
                 <h2>Taso läpäisty!</h2>
@@ -750,8 +773,9 @@
                 ['D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'],
                 ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2'],
             ];
-            const TIMER_MS = 10000;
             const NEXT_NOTE_DELAY_MS = 500;
+            const WRONG_OVERLAY_DELAY_MS = 2000;
+            const HOLD_MS = 500;
             const MAX_NOTES = 20;
             const NUM_LEVELS = NOTES_BY_LEVEL.length;
 
@@ -790,14 +814,13 @@
             }
 
             let currentLevel = 1;
-            let round = 0;
+            let progress = 0;
             let currentNote = null;
             /** Notes already shown this round (each level note must appear at least once before repeating) */
             var notesShownThisRound = {};
             /** Note the player last failed on; we try to show it first when starting the next level */
             var lastFailedNote = null;
             let noteShownAt = 0;
-            var noteTimeoutId = null;
             let keys = document.querySelectorAll('#piano [data-note]');
             let ledgerBelowEls = document.querySelectorAll('.ledger-below');
             let ledgerTopEls = document.querySelectorAll('.ledger-top');
@@ -943,32 +966,13 @@
             var correctMsgEl = document.getElementById('correct-msg');
             var progressBarEl = document.getElementById('next-progress-bar');
             var pianoEl = document.getElementById('piano');
-            var timeVisualizerBar = document.getElementById('time-visualizer-bar');
-            var timeVisualizerRafId = null;
+            var levelProgressFill = document.getElementById('level-progress-fill');
+            var progressTextEl = document.getElementById('progress-text');
 
-            function cancelTimeVisualizer() {
-                if (timeVisualizerRafId != null) {
-                    cancelAnimationFrame(timeVisualizerRafId);
-                    timeVisualizerRafId = null;
-                }
-            }
-
-            function updateTimeVisualizer() {
-                if (!currentNote || !timeVisualizerBar) return;
-                var elapsed = performance.now() - noteShownAt;
-                var timeLeft = Math.max(0, TIMER_MS - elapsed);
-                var pct = (timeLeft / TIMER_MS) * 100;
-                timeVisualizerBar.style.width = pct + '%';
-                if (pct > 0) {
-                    timeVisualizerRafId = requestAnimationFrame(updateTimeVisualizer);
-                }
-            }
-
-            function clearNoteTimeout() {
-                if (noteTimeoutId != null) {
-                    clearTimeout(noteTimeoutId);
-                    noteTimeoutId = null;
-                }
+            function updateProgressDisplay() {
+                var pct = (progress / MAX_NOTES) * 100;
+                if (levelProgressFill) levelProgressFill.style.width = pct + '%';
+                if (progressTextEl) progressTextEl.textContent = progress + ' / ' + MAX_NOTES;
             }
 
             function hideCorrectOverlay() {
@@ -979,8 +983,6 @@
             }
 
             function showCorrectOverlay(onComplete) {
-                clearNoteTimeout();
-                cancelTimeVisualizer();
                 correctMsgEl.textContent = 'Oikein!';
                 progressBarEl.classList.remove('filling');
                 progressBarEl.style.width = '0';
@@ -998,25 +1000,30 @@
                 keys.forEach(function (k) { k.classList.remove('correct'); });
             }
 
-            function gameOver(correctNote) {
-                clearNoteTimeout();
-                cancelTimeVisualizer();
+            var wrongOverlayTimeoutId = null;
+            function showWrongOverlay(correctNote) {
                 clearCorrectKeyHighlight();
                 var correctKeyEl = document.querySelector('#piano [data-note="' + correctNote + '"]');
                 if (correctKeyEl) {
                     correctKeyEl.classList.add('correct');
                     correctKeyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
-                document.getElementById('game-over-correct-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
-                document.getElementById('game-over-overlay').classList.add('visible');
+                progress = Math.max(0, progress - 1);
+                updateProgressDisplay();
+                document.getElementById('wrong-overlay-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
+                document.getElementById('wrong-overlay').classList.add('visible');
                 lastFailedNote = correctNote;
-                setLevelBest(currentLevel, round);
                 playFailureJingle();
+                if (wrongOverlayTimeoutId != null) clearTimeout(wrongOverlayTimeoutId);
+                wrongOverlayTimeoutId = setTimeout(function () {
+                    wrongOverlayTimeoutId = null;
+                    document.getElementById('wrong-overlay').classList.remove('visible');
+                    clearCorrectKeyHighlight();
+                    pickRandomNote();
+                }, WRONG_OVERLAY_DELAY_MS);
             }
 
             function levelComplete() {
-                clearNoteTimeout();
-                cancelTimeVisualizer();
                 localStorage.setItem(levelPassedKey(currentLevel), 'true');
                 setLevelBest(currentLevel, MAX_NOTES);
                 lastFailedNote = null;
@@ -1025,12 +1032,14 @@
             }
 
             function pickRandomNote() {
-                clearNoteTimeout();
-                cancelTimeVisualizer();
                 hideCorrectOverlay();
                 clearCorrectKeyHighlight();
-                document.getElementById('game-over-overlay').classList.remove('visible');
+                document.getElementById('wrong-overlay').classList.remove('visible');
                 document.getElementById('level-complete-overlay').classList.remove('visible');
+                if (wrongOverlayTimeoutId != null) {
+                    clearTimeout(wrongOverlayTimeoutId);
+                    wrongOverlayTimeoutId = null;
+                }
                 var notes = NOTES_BY_LEVEL[currentLevel - 1];
                 var unseen = notes.filter(function (n) { return !notesShownThisRound[n]; });
                 var pool = unseen.length > 0
@@ -1050,14 +1059,9 @@
                 }
                 notesShownThisRound[currentNote] = true;
                 noteShownAt = performance.now();
-                round += 1;
-                document.getElementById('round').textContent = 'Nuotti ' + round + ' / ' + MAX_NOTES;
                 document.getElementById('level-label').textContent = 'Taso ' + currentLevel;
                 setNoteOnStaff(currentNote);
-                timeVisualizerBar.style.width = '100%';
-                timeVisualizerRafId = requestAnimationFrame(updateTimeVisualizer);
-                noteTimeoutId = setTimeout(function () { gameOver(currentNote); }, TIMER_MS);
-                console.log('currentNote', currentNote);
+                updateProgressDisplay();
             }
 
             function isLevelUnlocked(levelNum) {
@@ -1105,13 +1109,15 @@
             }
 
             function showMenu() {
-                clearNoteTimeout();
-                cancelTimeVisualizer();
+                if (wrongOverlayTimeoutId != null) {
+                    clearTimeout(wrongOverlayTimeoutId);
+                    wrongOverlayTimeoutId = null;
+                }
                 clearCorrectKeyHighlight();
                 setClefForLevel(1);
                 document.getElementById('menu-screen').style.display = 'flex';
                 document.getElementById('game-screen').classList.remove('visible');
-                document.getElementById('game-over-overlay').classList.remove('visible');
+                document.getElementById('wrong-overlay').classList.remove('visible');
                 document.getElementById('level-complete-overlay').classList.remove('visible');
                 function getLevelLabel(i) {
                     const scientificFirst = scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]);
@@ -1167,7 +1173,7 @@
                 document.getElementById('menu-screen').style.display = 'none';
                 document.getElementById('game-screen').classList.add('visible');
                 setClefForLevel(currentLevel);
-                round = 0;
+                progress = 0;
                 currentNote = null;
                 notesShownThisRound = {};
                 var pianoEl = document.getElementById('piano');
@@ -1190,31 +1196,71 @@
 
             function onKeyPress(noteFull) {
                 if (!currentNote) return;
-                if (document.getElementById('game-over-overlay').classList.contains('visible') ||
+                if (document.getElementById('wrong-overlay').classList.contains('visible') ||
                     document.getElementById('level-complete-overlay').classList.contains('visible')) return;
                 playPianoNote(noteFull);
                 var keyEl = document.querySelector('#piano [data-note="' + noteFull + '"]');
                 var correct = noteFull === currentNote;
                 if (keyEl) giveFeedback(keyEl, correct);
                 if (correct) {
-                    if (round >= MAX_NOTES) {
+                    progress += 1;
+                    updateProgressDisplay();
+                    if (progress > getLevelBest(currentLevel)) setLevelBest(currentLevel, progress);
+                    if (progress >= MAX_NOTES) {
                         showCorrectOverlay(levelComplete);
                     } else {
                         showCorrectOverlay(pickRandomNote);
                     }
                 } else {
-                    gameOver(currentNote);
+                    showWrongOverlay(currentNote);
                 }
+            }
+
+            var holdTimeoutId = null;
+            var holdKeyEl = null;
+            function cancelHold() {
+                if (holdTimeoutId != null) {
+                    clearTimeout(holdTimeoutId);
+                    holdTimeoutId = null;
+                }
+                if (holdKeyEl) {
+                    holdKeyEl.classList.remove('holding');
+                    holdKeyEl = null;
+                }
+            }
+            function startKeyHold(note, keyEl) {
+                cancelHold();
+                holdKeyEl = keyEl;
+                keyEl.classList.add('holding');
+                holdTimeoutId = setTimeout(function () {
+                    holdTimeoutId = null;
+                    holdKeyEl.classList.remove('holding');
+                    holdKeyEl = null;
+                    onKeyPress(note);
+                }, HOLD_MS);
             }
 
             keys.forEach(function (key) {
                 const note = key.getAttribute('data-note');
-                key.addEventListener('click', function () { onKeyPress(note); });
-                key.addEventListener('touchend', function (e) {
+                var fill = document.createElement('span');
+                fill.className = 'key-hold-fill';
+                fill.setAttribute('aria-hidden', 'true');
+                key.appendChild(fill);
+                key.addEventListener('mousedown', function (e) {
                     e.preventDefault();
-                    onKeyPress(note);
+                    startKeyHold(note, key);
                 });
+                key.addEventListener('touchstart', function (e) {
+                    e.preventDefault();
+                    startKeyHold(note, key);
+                }, { passive: false });
             });
+            document.addEventListener('mouseup', cancelHold);
+            document.addEventListener('touchend', function (e) {
+                var hadHold = holdTimeoutId != null;
+                cancelHold();
+                if (hadHold) e.preventDefault();
+            }, { passive: false });
 
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js').catch(function () { });
@@ -1231,7 +1277,7 @@
                 showMenu();
             }
 
-            document.getElementById('game-over-btn-menu').addEventListener('click', showMenu);
+            document.getElementById('wrong-overlay-btn-menu').addEventListener('click', showMenu);
             document.getElementById('level-complete-btn-menu').addEventListener('click', showMenu);
             for (var i = 1; i <= NUM_LEVELS; i++) {
                 (function (levelNum) {
