@@ -405,7 +405,7 @@
         .white-key.holding .key-hold-fill,
         .black-key.holding .key-hold-fill {
             height: 100%;
-            transition: height 0.5s linear;
+            transition: height 0.3s linear;
         }
 
         .white-key.correct {
@@ -774,7 +774,7 @@
             ];
             const NEXT_NOTE_DELAY_MS = 500;
             const WRONG_OVERLAY_DELAY_MS = 2000;
-            const HOLD_MS = 500;
+            const HOLD_MS = 300;
             const MAX_NOTES = 20;
             const NUM_LEVELS = NOTES_BY_LEVEL.length;
 
@@ -819,6 +819,10 @@
             var notesShownThisRound = {};
             /** Note the player last failed on; we try to show it first when starting the next level */
             var lastFailedNote = null;
+            /** After a failure: next note must not be this; it must appear as 2nd or 3rd note */
+            var pendingRetryNote = null;
+            var retryAtStep = 2;
+            var stepsSinceFailure = 0;
             let noteShownAt = 0;
             let keys = document.querySelectorAll('#piano [data-note]');
             let ledgerBelowEls = document.querySelectorAll('.ledger-below');
@@ -1004,10 +1008,10 @@
                 delete notesShownThisRound[correctNote];
                 clearCorrectKeyHighlight();
                 var correctKeyEl = document.querySelector('#piano [data-note="' + correctNote + '"]');
-                if (correctKeyEl) {
-                    correctKeyEl.classList.add('correct');
-                    correctKeyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }
+                if (correctKeyEl) correctKeyEl.classList.add('correct');
+                pendingRetryNote = correctNote;
+                retryAtStep = Math.random() < 0.5 ? 2 : 3;
+                stepsSinceFailure = 0;
                 progress = Math.max(0, progress - 3);
                 updateProgressDisplay();
                 document.getElementById('wrong-overlay-msg').textContent = 'Oikea nuotti oli: ' + scientificToHelmholtz(correctNote);
@@ -1041,21 +1045,45 @@
                     wrongOverlayTimeoutId = null;
                 }
                 var notes = NOTES_BY_LEVEL[currentLevel - 1];
-                var unseen = notes.filter(function (n) { return !notesShownThisRound[n]; });
-                var pool = unseen.length > 0
-                    ? (currentNote === null ? unseen : unseen.filter(function (n) { return n !== currentNote; }))
-                    : notes.filter(function (n) { return n !== currentNote; });
-                if (pool.length === 0) pool = unseen.length ? unseen : notes.slice();
-                if (currentNote === null && lastFailedNote && notes.indexOf(lastFailedNote) !== -1 && pool.indexOf(lastFailedNote) !== -1) {
-                    currentNote = lastFailedNote;
-                    lastFailedNote = null;
-                } else if (currentNote === null && !lastFailedNote && currentLevel > 1) {
-                    var prevNotes = NOTES_BY_LEVEL[currentLevel - 2];
-                    var newInLevel = pool.filter(function (n) { return prevNotes.indexOf(n) === -1; });
-                    if (newInLevel.length > 0) pool = newInLevel;
-                    currentNote = pool[Math.floor(Math.random() * pool.length)];
+                var forceNote = null;
+                if (pendingRetryNote !== null && stepsSinceFailure === 1 && retryAtStep === 2) {
+                    forceNote = pendingRetryNote;
+                    pendingRetryNote = null;
+                    stepsSinceFailure = 2;
+                } else if (pendingRetryNote !== null && stepsSinceFailure === 2 && retryAtStep === 3) {
+                    forceNote = pendingRetryNote;
+                    pendingRetryNote = null;
+                    stepsSinceFailure = 3;
+                }
+                if (forceNote !== null) {
+                    currentNote = forceNote;
                 } else {
-                    currentNote = pool[Math.floor(Math.random() * pool.length)];
+                    var unseen = notes.filter(function (n) { return !notesShownThisRound[n]; });
+                    var pool = unseen.length > 0
+                        ? (currentNote === null ? unseen : unseen.filter(function (n) { return n !== currentNote; }))
+                        : notes.filter(function (n) { return n !== currentNote; });
+                    if (pool.length === 0) pool = (unseen.length ? unseen : notes.slice()).filter(function (n) { return n !== currentNote; });
+                    if (pool.length === 0) pool = unseen.length ? unseen : notes.slice();
+                    if (pendingRetryNote !== null && stepsSinceFailure === 0) {
+                        pool = pool.filter(function (n) { return n !== pendingRetryNote; });
+                        if (pool.length === 0) pool = notes.filter(function (n) { return n !== pendingRetryNote; });
+                    }
+                    if (pendingRetryNote !== null && stepsSinceFailure === 1 && retryAtStep === 3) {
+                        pool = pool.filter(function (n) { return n !== pendingRetryNote; });
+                        if (pool.length === 0) pool = notes.filter(function (n) { return n !== pendingRetryNote; });
+                    }
+                    if (currentNote === null && lastFailedNote && notes.indexOf(lastFailedNote) !== -1 && pool.indexOf(lastFailedNote) !== -1) {
+                        currentNote = lastFailedNote;
+                        lastFailedNote = null;
+                    } else if (currentNote === null && !lastFailedNote && currentLevel > 1) {
+                        var prevNotes = NOTES_BY_LEVEL[currentLevel - 2];
+                        var newInLevel = pool.filter(function (n) { return prevNotes.indexOf(n) === -1; });
+                        if (newInLevel.length > 0) pool = newInLevel;
+                        currentNote = pool[Math.floor(Math.random() * pool.length)];
+                    } else {
+                        currentNote = pool[Math.floor(Math.random() * pool.length)];
+                    }
+                    if (pendingRetryNote !== null) stepsSinceFailure = stepsSinceFailure + 1;
                 }
                 notesShownThisRound[currentNote] = true;
                 noteShownAt = performance.now();
@@ -1176,6 +1204,8 @@
                 progress = 0;
                 currentNote = null;
                 notesShownThisRound = {};
+                pendingRetryNote = null;
+                stepsSinceFailure = 0;
                 var pianoEl = document.getElementById('piano');
                 if (pianoEl) {
                     var notes = NOTES_BY_LEVEL[currentLevel - 1];
