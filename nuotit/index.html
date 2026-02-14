@@ -728,7 +728,6 @@
             const LEDGER_BELOW_THRESHOLD = 70;
             const TREBLE_LEDGER_ABOVE_THRESHOLD = 4;
             const BASS_LEDGER_ABOVE_THRESHOLD = 4;
-            const FIRST_BASS_LEVEL = 15;
 
             function ledgerBelowY(noteY) {
                 return FIRST_LEDGER_BELOW_Y + STAFF_LINE_SPACING * Math.floor((noteY - FIRST_LEDGER_BELOW_Y) / STAFF_LINE_SPACING);
@@ -746,35 +745,35 @@
             const STAFF_Y_BASS = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
             /* All notes use letter + octave (e.g. C4, F5, D3). No letter-only notes. */
             const NOTES_BY_LEVEL = [
-                ['C4', 'D4', 'E4'],
-                ['C4', 'D4', 'E4', 'F4'],
-                ['C4', 'D4', 'E4', 'F4', 'G4'],
-                ['C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
-                ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4'],
-                ['D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
-                ['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5'],
-                ['F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5'],
-                ['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5'],
-                ['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5'],
-                ['B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5'],
-                ['B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
-                ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4'],
-                ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4'],
-                ['C3', 'D3', 'E3'],
-                ['C3', 'D3', 'E3', 'F3'],
-                ['C3', 'D3', 'E3', 'F3', 'G3'],
-                ['C3', 'D3', 'E3', 'F3', 'G3', 'A3'],
-                ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3'],
-                ['B2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A3'],
-                ['A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3'],
-                ['G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3'],
-                ['F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3'],
-                ['E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3'],
-                ['D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'],
-                ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2'],
-                ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4'],
-                ['C#4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4'],
-                ['C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4', 'B4'],
+                {clef: 'treble', notes: ['C4', 'D4', 'E4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F4', 'G4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4']},
+                {clef: 'treble', notes: ['D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5']},
+                {clef: 'treble', notes: ['E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'D5']},
+                {clef: 'treble', notes: ['F4', 'G4', 'A4', 'B4', 'C5', 'D5', 'E5']},
+                {clef: 'treble', notes: ['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F5']},
+                {clef: 'treble', notes: ['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5']},
+                {clef: 'treble', notes: ['B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5']},
+                {clef: 'treble', notes: ['B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4']},
+                {clef: 'treble', notes: ['A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4']},
+                {clef: 'treble', notes: ['G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3', 'G3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3']},
+                {clef: 'bass', notes: ['B2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A3']},
+                {clef: 'bass', notes: ['A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3']},
+                {clef: 'bass', notes: ['G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3']},
+                {clef: 'bass', notes: ['F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3']},
+                {clef: 'bass', notes: ['E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3']},
+                {clef: 'bass', notes: ['D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3']},
+                {clef: 'bass', notes: ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
+                {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
+                {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4', 'B4']},
             ];
             const NEXT_NOTE_DELAY_MS = 500;
             const WRONG_OVERLAY_DELAY_MS = 2000;
@@ -793,7 +792,9 @@
                 fill.className = 'level-btn-fill';
                 var text = document.createElement('span');
                 text.className = 'level-btn-text';
-                text.textContent = 'Taso ' + i + ': ' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]) + '–' + scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
+                var lev = NOTES_BY_LEVEL[i - 1];
+                var levNotes = lev.notes;
+                text.textContent = 'Taso ' + i + ': ' + scientificToHelmholtz(levNotes[0]) + '–' + scientificToHelmholtz(levNotes[levNotes.length - 1]);
                 btn.appendChild(fill);
                 btn.appendChild(text);
                 levelBtns.appendChild(btn);
@@ -914,7 +915,8 @@
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 34;
                 var letterForStaff = parsed.letter.replace('#', '');
-                if (currentLevel >= FIRST_BASS_LEVEL) {
+                var levelConfig = NOTES_BY_LEVEL[currentLevel - 1];
+                if (levelConfig && levelConfig.clef === 'bass') {
                     var baseY = STAFF_Y_BASS[letterForStaff];
                     return baseY + (3 - parsed.octave) * BASS_OCTAVE_OFFSET;
                 }
@@ -927,7 +929,7 @@
             function setNoteOnStaff(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
-                var isBass = currentLevel >= FIRST_BASS_LEVEL;
+                var isBass = (NOTES_BY_LEVEL[currentLevel - 1] || {}).clef === 'bass';
                 var y = getStaffY(noteFull);
                 var middleY = 34;
                 var isSharp = parsed.letter.indexOf('#') !== -1;
@@ -972,7 +974,7 @@
             }
 
             function setClefForLevel(level) {
-                var useBass = level >= FIRST_BASS_LEVEL;
+                var useBass = (NOTES_BY_LEVEL[level - 1] || {}).clef === 'bass';
                 document.getElementById('clef-g').style.display = useBass ? 'none' : '';
                 document.getElementById('clef-f').style.display = useBass ? '' : 'none';
             }
@@ -1056,7 +1058,7 @@
                     clearTimeout(wrongOverlayTimeoutId);
                     wrongOverlayTimeoutId = null;
                 }
-                var notes = NOTES_BY_LEVEL[currentLevel - 1];
+                var notes = (NOTES_BY_LEVEL[currentLevel - 1] || {}).notes || [];
                 var forceNote = null;
                 if (pendingRetryNote !== null && stepsSinceFailure === 1 && retryAtStep === 2) {
                     forceNote = pendingRetryNote;
@@ -1088,7 +1090,7 @@
                         currentNote = lastFailedNote;
                         lastFailedNote = null;
                     } else if (currentNote === null && !lastFailedNote && currentLevel > 1) {
-                        var prevNotes = NOTES_BY_LEVEL[currentLevel - 2];
+                        var prevNotes = (NOTES_BY_LEVEL[currentLevel - 2] || {}).notes || [];
                         var newInLevel = pool.filter(function (n) { return prevNotes.indexOf(n) === -1; });
                         if (newInLevel.length > 0) pool = newInLevel;
                         currentNote = pool[Math.floor(Math.random() * pool.length)];
@@ -1159,9 +1161,9 @@
                 document.getElementById('wrong-overlay').classList.remove('visible');
                 document.getElementById('level-complete-overlay').classList.remove('visible');
                 function getLevelLabel(i) {
-                    const scientificFirst = scientificToHelmholtz(NOTES_BY_LEVEL[i - 1][0]);
-                    const scientificLast = scientificToHelmholtz(
-                        NOTES_BY_LEVEL[i - 1][NOTES_BY_LEVEL[i - 1].length - 1]);
+                    var li = NOTES_BY_LEVEL[i - 1].notes;
+                    const scientificFirst = scientificToHelmholtz(li[0]);
+                    const scientificLast = scientificToHelmholtz(li[li.length - 1]);
                     return ": " + scientificFirst + '–' + scientificLast;
                 }
                 var latestUnlocked = 0;
@@ -1221,7 +1223,7 @@
                 stepsSinceFailure = 0;
                 var pianoEl = document.getElementById('piano');
                 if (pianoEl) {
-                    var notes = NOTES_BY_LEVEL[currentLevel - 1];
+                    var notes = (NOTES_BY_LEVEL[currentLevel - 1] || {}).notes || [];
                     var lowestNote = notes && notes[0];
                     pianoEl.scrollLeft = lowestNote ? getScrollLeftForNote(lowestNote) : 0;
                 }
