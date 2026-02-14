@@ -604,6 +604,7 @@
                     <!-- Quarter note: accidental (sharp) + head + stem -->
                     <g id="note-group" fill="#000" stroke="none">
                         <text id="note-accidental-sharp" x="172" y="34" font-size="29" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text id="note-accidental-flat" x="172" y="34" font-size="29" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
                         <ellipse id="note-head" cx="200" cy="34" rx="10" ry="8" />
                         <line id="note-stem" x1="210" y1="34" x2="210" y2="0" stroke="#000" stroke-width="2"
                             stroke-linecap="round" />
@@ -774,9 +775,21 @@
                 {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
                 {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
                 {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4', 'B4']},
+                {clef: 'treble', notes: ['C#3', 'D3', 'E3', 'F#3', 'G#3', 'A3', 'B3']},
                 {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F#3', 'G3', 'A3', 'B3']},
                 {clef: 'bass', notes: ['C#3', 'D3', 'E3', 'F#3', 'G3', 'A3', 'B3']},
                 {clef: 'bass', notes: ['C#3', 'D3', 'E3', 'F#3', 'G#3', 'A3', 'B3']},
+                {clef: 'bass', notes: ['C#2', 'D2', 'E2', 'F#2', 'G#2', 'A2', 'B2']},
+                {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'Bb4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'A4', 'Bb4']},
+                {clef: 'treble', notes: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4']},
+                {clef: 'treble', notes: ['Bb3', 'C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4']},
+                {clef: 'treble', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'Bb3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'A3', 'Bb3']},
+                {clef: 'bass', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3']},
+                {clef: 'bass', notes: ['Bb2', 'C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3']},
+                {clef: 'bass', notes: ['C2', 'D2', 'Eb2', 'F2', 'G2', 'Ab2', 'Bb2']},
             ];
             const NEXT_NOTE_DELAY_MS = 500;
             const WRONG_OVERLAY_DELAY_MS = 2000;
@@ -842,13 +855,21 @@
             var NOTE_FREQ = {
                 'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13, 'E': 329.63,
                 'F': 349.23, 'F#': 369.99, 'G': 392.00, 'G#': 415.30, 'A': 440.00,
-                'A#': 466.16, 'B': 493.88
+                'A#': 466.16, 'B': 493.88,
+                'Bb': 466.16, 'Eb': 311.13, 'Ab': 415.30
             };
 
             function parseNoteFull(noteFull) {
-                var m = noteFull.match(/^([A-G]#?)(\d)$/);
+                var m = noteFull.match(/^([A-G][#b]?)(\d)$/);
                 if (!m) return null;
                 return { letter: m[1], octave: parseInt(m[2], 10) };
+            }
+            function toPianoKeyNote(noteFull) {
+                var flatToSharp = { 'Bb': 'A#', 'Eb': 'D#', 'Ab': 'G#' };
+                var parsed = parseNoteFull(noteFull);
+                if (!parsed) return noteFull;
+                var sharp = flatToSharp[parsed.letter];
+                return sharp ? sharp + parsed.octave : noteFull;
             }
             function playPianoNote(noteFull) {
                 var parsed = parseNoteFull(noteFull);
@@ -917,7 +938,7 @@
             function getStaffY(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 34;
-                var letterForStaff = parsed.letter.replace('#', '');
+                var letterForStaff = parsed.letter.replace(/#|b/g, '');
                 var levelConfig = NOTES_BY_LEVEL[currentLevel - 1];
                 if (levelConfig && levelConfig.clef === 'bass') {
                     var baseY = STAFF_Y_BASS[letterForStaff];
@@ -929,6 +950,7 @@
             }
 
             var noteAccidentalSharp = document.getElementById('note-accidental-sharp');
+            var noteAccidentalFlat = document.getElementById('note-accidental-flat');
             function setNoteOnStaff(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
@@ -936,10 +958,16 @@
                 var y = getStaffY(noteFull);
                 var middleY = 34;
                 var isSharp = parsed.letter.indexOf('#') !== -1;
+                var isFlat = parsed.letter.indexOf('b') !== -1;
                 if (noteAccidentalSharp) {
                     noteAccidentalSharp.setAttribute('visibility', isSharp ? 'visible' : 'hidden');
                     noteAccidentalSharp.setAttribute('x', '172');
                     noteAccidentalSharp.setAttribute('y', y + 8);
+                }
+                if (noteAccidentalFlat) {
+                    noteAccidentalFlat.setAttribute('visibility', isFlat ? 'visible' : 'hidden');
+                    noteAccidentalFlat.setAttribute('x', '172');
+                    noteAccidentalFlat.setAttribute('y', y + 8);
                 }
                 noteHead.setAttribute('cy', y);
                 noteStem.setAttribute('y1', y);
@@ -1024,7 +1052,8 @@
             function showWrongOverlay(correctNote) {
                 delete notesShownThisRound[correctNote];
                 clearCorrectKeyHighlight();
-                var correctKeyEl = document.querySelector('#piano [data-note="' + correctNote + '"]');
+                var keyNote = toPianoKeyNote(correctNote);
+                var correctKeyEl = document.querySelector('#piano [data-note="' + keyNote + '"]');
                 if (correctKeyEl) correctKeyEl.classList.add('correct');
                 pendingRetryNote = correctNote;
                 retryAtStep = Math.random() < 0.5 ? 2 : 3;
@@ -1117,8 +1146,10 @@
             function scientificToHelmholtz(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return noteFull;
-                var letter = parsed.letter.replace('#', '\u266F');
+                var letter = parsed.letter;
                 if (letter === 'B') letter = 'H';
+                else if (letter === 'Bb') letter = 'H\u266D';
+                else letter = letter.replace('#', '\u266F').replace('b', '\u266D');
                 if (parsed.octave === 2) {
                     return letter.toUpperCase();
                 }
@@ -1205,10 +1236,10 @@
             function getScrollLeftForNote(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 0;
-                var letterForScroll = parsed.letter.replace('#', '');
+                var letterForScroll = parsed.letter.replace(/#|b/g, '');
                 var keyIndex = LETTER_INDEX[letterForScroll];
                 if (keyIndex === undefined) return 0;
-                if (parsed.letter.indexOf('#') !== -1) keyIndex += 0.5;
+                if (parsed.letter.indexOf('#') !== -1 || parsed.letter.indexOf('b') !== -1) keyIndex += 0.5;
                 var octaveIndex = parsed.octave - 1;
                 var noteLeftVw = octaveIndex * OCTAVE_VW + (keyIndex / 7) * OCTAVE_VW;
                 return Math.max(0, (noteLeftVw - TARGET_KEY_VW) / 100 * window.innerWidth);
@@ -1247,10 +1278,8 @@
                 if (document.getElementById('wrong-overlay').classList.contains('visible') ||
                     document.getElementById('level-complete-overlay').classList.contains('visible')) return;
                 playPianoNote(noteFull);
-                console.log("noteFull", noteFull);
                 var keyEl = document.querySelector('#piano [data-note="' + noteFull + '"]');
-                console.log("currentNote", currentNote);
-                var correct = noteFull === currentNote;
+                var correct = (noteFull === currentNote) || (toPianoKeyNote(currentNote) === noteFull);
                 if (keyEl) giveFeedback(keyEl, correct);
                 if (correct) {
                     progress += 1;
