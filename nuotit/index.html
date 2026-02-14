@@ -589,6 +589,23 @@
                         <path
                             d="M455.486,211.365c-22.759,0-41.281,18.522-41.281,41.282c0,22.77,18.522,41.281,41.281,41.281c22.771,0,41.282-18.511,41.282-41.281C496.768,229.887,478.256,211.365,455.486,211.365z" />
                     </g>
+                    <!-- Key signature: sharps or flats from level notes -->
+                    <g id="key-signature" fill="#000" stroke="none">
+                        <text class="key-sig-sharp" x="90" y="18" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="98" y="48" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="106" y="54" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="114" y="36" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="122" y="42" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="130" y="24" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-sharp" x="138" y="60" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
+                        <text class="key-sig-flat" x="90" y="42" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="98" y="36" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="106" y="48" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="114" y="30" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="122" y="54" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="130" y="60" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                        <text class="key-sig-flat" x="138" y="18" font-size="26" font-family="serif" text-anchor="middle" visibility="hidden">♭</text>
+                    </g>
                     <!-- Ledger lines as staff extensions (multiple below and above) -->
                     <g id="ledger-below-group">
                         <line class="ledger-below" x1="180" y1="70" x2="220" y2="70" stroke="#000" stroke-width="2" visibility="hidden" />
@@ -736,14 +753,37 @@
             function ledgerAboveY(noteY) {
                 return STAFF_TOP_Y - STAFF_LINE_SPACING * Math.floor((STAFF_TOP_Y - noteY) / STAFF_LINE_SPACING);
             }
-            /* Treble staff: bottom line E4=58, space F4=52, line G4=46, space A4=40, line B4=34. Below staff: D4=64, C4=70 (ledger). */
-            const STAFF_Y = { 'C': 70, 'D': 64, 'E': 58, 'F': 52, 'G': 46, 'A': 40, 'B': 34 };
-            /* Treble staff octave 5: C5=28..G5=4 (space above staff), A5=-2, B5=-8 (ledger above). */
-            const STAFF_Y_5 = { 'C': 28, 'D': 22, 'E': 16, 'F': 10, 'G': 4, 'A': -2, 'B': -8 };
-            /* Treble staff octave 3 (below staff): G3=88, A3=82, B3=76 (ledger below). */
-            const STAFF_Y_3_TREBLE = { 'G': 88, 'A': 82, 'B': 76 };
-            /* Bass staff (F clef): lines G2=58, B2=46, D3=34, F3=22, A3=10. Spaces: C3=40, E3=28, G3=16. Above: B3=4. */
-            const STAFF_Y_BASS = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
+            /* Staff Y position: single function (note e.g. "C4", clef "treble"|"bass"). Used for note heads, accidentals, key signature. */
+            const NOTE_ACCIDENTAL_OFFSET = 8;
+
+            function getPitchY(noteFull, clef) {
+                var parsed = parseNoteFull(noteFull);
+                if (!parsed) return 34;
+                var L = parsed.letter.replace(/#|b/g, '');
+                var oct = parseInt(parsed.octave, 10);
+                if (isNaN(oct)) return 34;
+                if (clef === 'bass') {
+                    var base = { 'C': 40, 'D': 34, 'E': 28, 'F': 22, 'G': 16, 'A': 10, 'B': 4 };
+                    if (base[L] === undefined) return 34;
+                    return base[L] + (3 - oct) * 42;
+                }
+                /* Treble: octave 4 as reference, step 42 per octave (same as bass). */
+                var trebleBase = { 'C': 70, 'D': 64, 'E': 58, 'F': 52, 'G': 46, 'A': 40, 'B': 34 };
+                if (trebleBase[L] === undefined) return 34;
+                return trebleBase[L] + (4 - oct) * 42;
+            }
+
+            /* Key signature: reference note per letter (F♯5, C♯5, G♯4, D♯5 treble; F♯3, C♯3, G♯3, D♯3 bass + A,E,B). */
+            var KEY_SIG_REF_NOTE = {
+                treble: { 'F': 'F5', 'C': 'C5', 'G': 'G4', 'D': 'D5', 'A': 'A4', 'E': 'E5', 'B': 'B4' },
+                bass: { 'F': 'F3', 'C': 'C3', 'G': 'G3', 'D': 'D3', 'A': 'A3', 'E': 'E3', 'B': 'B3' }
+            };
+            function getKeySigY(letter, clef) {
+                var L = letter.replace(/#|b/g, '');
+                var ref = (KEY_SIG_REF_NOTE[clef] || {})[L];
+                if (!ref) return 34;
+                return getPitchY(ref, clef) + NOTE_ACCIDENTAL_OFFSET;
+            }
             /* All notes use letter + octave (e.g. C4, F5, D3). No letter-only notes. */
             const NOTES_BY_LEVEL = [
                 {clef: 'treble', notes: ['C4', 'D4', 'E4']},
@@ -775,7 +815,7 @@
                 {clef: 'treble', notes: ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
                 {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4']},
                 {clef: 'treble', notes: ['C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4', 'B4']},
-                {clef: 'treble', notes: ['C#3', 'D3', 'E3', 'F#3', 'G#3', 'A3', 'B3']},
+                {clef: 'treble', notes: ['C#5', 'D5', 'E5', 'F#5', 'G#5', 'A5', 'B5']},
                 {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F#3', 'G3', 'A3', 'B3']},
                 {clef: 'bass', notes: ['C#3', 'D3', 'E3', 'F#3', 'G3', 'A3', 'B3']},
                 {clef: 'bass', notes: ['C#3', 'D3', 'E3', 'F#3', 'G#3', 'A3', 'B3']},
@@ -784,7 +824,7 @@
                 {clef: 'treble', notes: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'A4', 'Bb4']},
                 {clef: 'treble', notes: ['C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4']},
                 {clef: 'treble', notes: ['Bb3', 'C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4']},
-                {clef: 'treble', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3']},
+                {clef: 'treble', notes: ['C5', 'D5', 'Eb5', 'F5', 'G5', 'Ab5', 'Bb5']},
                 {clef: 'bass', notes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'Bb3']},
                 {clef: 'bass', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'A3', 'Bb3']},
                 {clef: 'bass', notes: ['C3', 'D3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3']},
@@ -933,41 +973,31 @@
                 }, 500);
             }
 
-            /* On bass staff, one octave = 7 steps × 6 = 42 units. STAFF_Y_BASS is for octave 3. */
-            const BASS_OCTAVE_OFFSET = 42;
-            function getStaffY(noteFull) {
-                var parsed = parseNoteFull(noteFull);
-                if (!parsed) return 34;
-                var letterForStaff = parsed.letter.replace(/#|b/g, '');
-                var levelConfig = NOTES_BY_LEVEL[currentLevel - 1];
-                if (levelConfig && levelConfig.clef === 'bass') {
-                    var baseY = STAFF_Y_BASS[letterForStaff];
-                    return baseY + (3 - parsed.octave) * BASS_OCTAVE_OFFSET;
-                }
-                if (parsed.octave === 5 && STAFF_Y_5[letterForStaff] !== undefined) return STAFF_Y_5[letterForStaff];
-                if (parsed.octave === 3 && STAFF_Y_3_TREBLE[letterForStaff] !== undefined) return STAFF_Y_3_TREBLE[letterForStaff];
-                return STAFF_Y[letterForStaff];
+            function getStaffY(noteFull, clefOptional) {
+                var clef = clefOptional != null ? (clefOptional === 'bass' ? 'bass' : 'treble') : ((NOTES_BY_LEVEL[currentLevel - 1] || {}).clef === 'bass' ? 'bass' : 'treble');
+                return getPitchY(noteFull, clef);
             }
 
             var noteAccidentalSharp = document.getElementById('note-accidental-sharp');
             var noteAccidentalFlat = document.getElementById('note-accidental-flat');
-            function setNoteOnStaff(noteFull) {
+            function setNoteOnStaff(noteFull, clefForNote) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
-                var isBass = (NOTES_BY_LEVEL[currentLevel - 1] || {}).clef === 'bass';
-                var y = getStaffY(noteFull);
+                var clef = clefForNote != null ? (clefForNote === 'bass' ? 'bass' : 'treble') : ((NOTES_BY_LEVEL[currentLevel - 1] || {}).clef === 'bass' ? 'bass' : 'treble');
+                var isBass = (clef === 'bass');
+                var y = getPitchY(noteFull, clef);
                 var middleY = 34;
                 var isSharp = parsed.letter.indexOf('#') !== -1;
                 var isFlat = parsed.letter.indexOf('b') !== -1;
                 if (noteAccidentalSharp) {
                     noteAccidentalSharp.setAttribute('visibility', isSharp ? 'visible' : 'hidden');
                     noteAccidentalSharp.setAttribute('x', '172');
-                    noteAccidentalSharp.setAttribute('y', y + 8);
+                    noteAccidentalSharp.setAttribute('y', y + NOTE_ACCIDENTAL_OFFSET);
                 }
                 if (noteAccidentalFlat) {
                     noteAccidentalFlat.setAttribute('visibility', isFlat ? 'visible' : 'hidden');
                     noteAccidentalFlat.setAttribute('x', '172');
-                    noteAccidentalFlat.setAttribute('y', y + 8);
+                    noteAccidentalFlat.setAttribute('y', y + NOTE_ACCIDENTAL_OFFSET);
                 }
                 noteHead.setAttribute('cy', y);
                 noteStem.setAttribute('y1', y);
@@ -1004,10 +1034,52 @@
                 }
             }
 
+            var KEY_SIG_SHARP_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
+            var KEY_SIG_FLAT_ORDER = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
+            var KEY_SIG_FONT_SIZE = 26;
+            var KEY_SIG_X_START = 60;
+            var KEY_SIG_X_STEP = 11;
+
+            function setKeySignature(level) {
+                var config = NOTES_BY_LEVEL[level - 1];
+                if (!config || !config.notes) return;
+                var notes = config.notes;
+                var clef = config.clef === 'bass' ? 'bass' : 'treble';
+                var sharpLetters = {};
+                var flatLetters = {};
+                for (var n = 0; n < notes.length; n++) {
+                    var parsed = parseNoteFull(notes[n]);
+                    if (!parsed) continue;
+                    if (parsed.letter.indexOf('#') !== -1) sharpLetters[parsed.letter.replace('#', '')] = true;
+                    if (parsed.letter.indexOf('b') !== -1) flatLetters[parsed.letter.replace('b', '')] = true;
+                }
+                var sharpEls = document.querySelectorAll('#key-signature .key-sig-sharp');
+                var flatEls = document.querySelectorAll('#key-signature .key-sig-flat');
+                var hasSharps = Object.keys(sharpLetters).length > 0;
+                var hasFlats = Object.keys(flatLetters).length > 0;
+                for (var i = 0; i < 7; i++) {
+                    var showSharp = hasSharps && sharpLetters[KEY_SIG_SHARP_ORDER[i]];
+                    if (sharpEls[i]) {
+                        sharpEls[i].setAttribute('x', KEY_SIG_X_START + i * KEY_SIG_X_STEP);
+                        sharpEls[i].setAttribute('y', getKeySigY(KEY_SIG_SHARP_ORDER[i], clef));
+                        sharpEls[i].setAttribute('font-size', KEY_SIG_FONT_SIZE);
+                        sharpEls[i].setAttribute('visibility', showSharp ? 'visible' : 'hidden');
+                    }
+                    var showFlat = hasFlats && flatLetters[KEY_SIG_FLAT_ORDER[i]];
+                    if (flatEls[i]) {
+                        flatEls[i].setAttribute('x', KEY_SIG_X_START + i * KEY_SIG_X_STEP);
+                        flatEls[i].setAttribute('y', getKeySigY(KEY_SIG_FLAT_ORDER[i], clef));
+                        flatEls[i].setAttribute('font-size', KEY_SIG_FONT_SIZE);
+                        flatEls[i].setAttribute('visibility', showFlat ? 'visible' : 'hidden');
+                    }
+                }
+            }
+
             function setClefForLevel(level) {
                 var useBass = (NOTES_BY_LEVEL[level - 1] || {}).clef === 'bass';
                 document.getElementById('clef-g').style.display = useBass ? 'none' : '';
                 document.getElementById('clef-f').style.display = useBass ? '' : 'none';
+                setKeySignature(level);
             }
 
             var overlayEl = document.getElementById('correct-overlay');
@@ -1134,8 +1206,10 @@
                 notesShownThisRound[currentNote] = true;
                 noteShownAt = performance.now();
                 document.getElementById('level-label').textContent = 'Taso ' + currentLevel;
-                setNoteOnStaff(currentNote);
+                var levelConfig = NOTES_BY_LEVEL[currentLevel - 1] || {};
+                setNoteOnStaff(currentNote, levelConfig.clef);
                 updateProgressDisplay();
+                console.log("currentNote", currentNote);
             }
 
             function isLevelUnlocked(levelNum) {
