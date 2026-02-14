@@ -601,8 +601,9 @@
                         <line class="ledger-top" x1="180" y1="-14" x2="220" y2="-14" stroke="#000" stroke-width="2" visibility="hidden" />
                         <line class="ledger-top" x1="180" y1="-26" x2="220" y2="-26" stroke="#000" stroke-width="2" visibility="hidden" />
                     </g>
-                    <!-- Quarter note: head + stem (C4–B4 only) -->
+                    <!-- Quarter note: accidental (sharp) + head + stem -->
                     <g id="note-group" fill="#000" stroke="none">
+                        <text id="note-accidental-sharp" x="172" y="34" font-size="29" font-family="serif" text-anchor="middle" visibility="hidden">♯</text>
                         <ellipse id="note-head" cx="200" cy="34" rx="10" ry="8" />
                         <line id="note-stem" x1="210" y1="34" x2="210" y2="0" stroke="#000" stroke-width="2"
                             stroke-linecap="round" />
@@ -771,6 +772,9 @@
                 ['E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3'],
                 ['D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3'],
                 ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2'],
+                ['C4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4'],
+                ['C#4', 'D4', 'E4', 'F#4', 'G4', 'A4', 'B4'],
+                ['C#4', 'D4', 'E4', 'F#4', 'G#4', 'A4', 'B4'],
             ];
             const NEXT_NOTE_DELAY_MS = 500;
             const WRONG_OVERLAY_DELAY_MS = 2000;
@@ -909,21 +913,29 @@
             function getStaffY(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 34;
+                var letterForStaff = parsed.letter.replace('#', '');
                 if (currentLevel >= FIRST_BASS_LEVEL) {
-                    var baseY = STAFF_Y_BASS[parsed.letter];
+                    var baseY = STAFF_Y_BASS[letterForStaff];
                     return baseY + (3 - parsed.octave) * BASS_OCTAVE_OFFSET;
                 }
-                if (parsed.octave === 5 && STAFF_Y_5[parsed.letter] !== undefined) return STAFF_Y_5[parsed.letter];
-                if (parsed.octave === 3 && STAFF_Y_3_TREBLE[parsed.letter] !== undefined) return STAFF_Y_3_TREBLE[parsed.letter];
-                return STAFF_Y[parsed.letter];
+                if (parsed.octave === 5 && STAFF_Y_5[letterForStaff] !== undefined) return STAFF_Y_5[letterForStaff];
+                if (parsed.octave === 3 && STAFF_Y_3_TREBLE[letterForStaff] !== undefined) return STAFF_Y_3_TREBLE[letterForStaff];
+                return STAFF_Y[letterForStaff];
             }
 
+            var noteAccidentalSharp = document.getElementById('note-accidental-sharp');
             function setNoteOnStaff(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return;
                 var isBass = currentLevel >= FIRST_BASS_LEVEL;
                 var y = getStaffY(noteFull);
                 var middleY = 34;
+                var isSharp = parsed.letter.indexOf('#') !== -1;
+                if (noteAccidentalSharp) {
+                    noteAccidentalSharp.setAttribute('visibility', isSharp ? 'visible' : 'hidden');
+                    noteAccidentalSharp.setAttribute('x', '172');
+                    noteAccidentalSharp.setAttribute('y', y + 8);
+                }
                 noteHead.setAttribute('cy', y);
                 noteStem.setAttribute('y1', y);
                 noteStem.setAttribute('y2', y >= middleY ? y - 34 : y + 34);
@@ -1100,14 +1112,13 @@
             function scientificToHelmholtz(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return noteFull;
-                if (parsed.letter === 'B') {
-                    parsed.letter = 'H';
-                }
+                var letter = parsed.letter.replace('#', '\u266F');
+                if (letter === 'B') letter = 'H';
                 if (parsed.octave === 2) {
-                    return parsed.letter.toUpperCase()
+                    return letter.toUpperCase();
                 }
                 if (parsed.octave === 3) {
-                    return parsed.letter.toLowerCase()
+                    return letter.toLowerCase();
                 } else if (parsed.octave > 3) {
                     const smallNumber = parsed.octave - 3;
                     const smallNumberMap = {
@@ -1120,8 +1131,8 @@
                         7: '⁷',
                         8: '⁸',
                         9: '⁹',
-                    }
-                    return parsed.letter.toLowerCase() + smallNumberMap[smallNumber];
+                    };
+                    return letter.toLowerCase() + smallNumberMap[smallNumber];
                 } else if (parsed.octave < 2) {
                     const smallNumber = 2 - parsed.octave;
                     const smallNumberMap = {
@@ -1130,8 +1141,8 @@
                         3: '₃',
                         4: '₄',
                         5: '₅',
-                    }
-                    return parsed.letter.toUpperCase() + smallNumberMap[smallNumber];
+                    };
+                    return letter.toUpperCase() + smallNumberMap[smallNumber];
                 }
                 return noteFull;
             }
@@ -1189,8 +1200,10 @@
             function getScrollLeftForNote(noteFull) {
                 var parsed = parseNoteFull(noteFull);
                 if (!parsed) return 0;
-                var keyIndex = LETTER_INDEX[parsed.letter];
+                var letterForScroll = parsed.letter.replace('#', '');
+                var keyIndex = LETTER_INDEX[letterForScroll];
                 if (keyIndex === undefined) return 0;
+                if (parsed.letter.indexOf('#') !== -1) keyIndex += 0.5;
                 var octaveIndex = parsed.octave - 1;
                 var noteLeftVw = octaveIndex * OCTAVE_VW + (keyIndex / 7) * OCTAVE_VW;
                 return Math.max(0, (noteLeftVw - TARGET_KEY_VW) / 100 * window.innerWidth);
@@ -1229,7 +1242,9 @@
                 if (document.getElementById('wrong-overlay').classList.contains('visible') ||
                     document.getElementById('level-complete-overlay').classList.contains('visible')) return;
                 playPianoNote(noteFull);
+                console.log("noteFull", noteFull);
                 var keyEl = document.querySelector('#piano [data-note="' + noteFull + '"]');
+                console.log("currentNote", currentNote);
                 var correct = noteFull === currentNote;
                 if (keyEl) giveFeedback(keyEl, correct);
                 if (correct) {
