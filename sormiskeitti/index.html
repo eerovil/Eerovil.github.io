@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sormiskeitti</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#222;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;font-family:system-ui,sans-serif}
+  canvas{display:block;width:100vw;height:100dvh}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const c = document.getElementById('c'), x = c.getContext('2d');
+let W, H, DPR;
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  c.width = W * DPR; c.height = H * DPR;
+}
+addEventListener('resize', resize); resize();
+
+// World: ground at y=0, up is positive.
+const L = 1200, R = 160, G = 0.25, VMAX = 16, PUSH = 0.15;
+const LIP_X = L + R, LIP_Y = R;
+let level = 1, best = 0;
+let won = false, st, s, v, ollie, ollieText, ay, avy, spin, maxH, bonk, shake, msg, msgT, endT, kicks;
+function ceilH() { return 90 + level * 60; } // height above the lip
+function reset() {
+  if (won) { level++; won = false; }
+  st = 'ready'; s = 0; v = 0; ollie = 0; ollieText = ''; ay = 0; avy = 0; spin = 0;
+  maxH = 0; bonk = false; shake = 0; msg = ''; msgT = 0; endT = 0; kicks = [];
+}
+reset();
+
+function boardPos() {
+  if (st === 'air' || st === 'end') return { x: LIP_X - 14, y: ay, a: Math.PI / 2 + spin };
+  if (s <= L) return { x: s, y: 0, a: 0 };
+  const th = Math.min((s - L) / R, Math.PI / 2);
+  return { x: L + R * Math.sin(th), y: R - R * Math.cos(th), a: th };
+}
+function theta() { return s > L ? (s - L) / R : 0; }
+
+function tap() {
+  if (st === 'ready') { st = 'roll'; }
+  if (st === 'end') { if (performance.now() - endT > 700) reset(); return; }
+  if (st !== 'roll') return;
+  if (s < L) {
+    v += (VMAX - v) * PUSH;
+    kicks.push({ x: s, t: 0 });
+  } else if (!ollie) {
+    const th = theta();
+    if (th > 1.42) { ollie = 1.3; ollieText = 'TÄYDELLINEN OLLIE!'; }
+    else if (th > 1.1) { ollie = 1.15; ollieText = 'Hyvä ollie!'; }
+    else { ollie = 1; ollieText = 'Liian aikaisin…'; }
+    msgT = 90;
+  }
+}
+addEventListener('pointerdown', e => { e.preventDefault(); tap(); }, { passive: false });
+addEventListener('keydown', e => { if (e.code === 'Space') tap(); });
+
+function finish(win) {
+  st = 'end'; endT = performance.now();
+  if (win) {
+    msg = `KATTO! 🎉 Taso ${level} läpi`;
+    won = true;
+  } else {
+    const miss = Math.max(0, Math.round((ceilH() - maxH) / 10));
+    msg = `Jäi ${miss} cm vajaaksi`;
+  }
+}
+
+function step() {
+  kicks.forEach(k => k.t++); kicks = kicks.filter(k => k.t < 30);
+  if (msgT > 0) msgT--;
+  if (shake > 0) shake *= 0.9;
+  if (st === 'roll') {
+    const th = theta();
+    v *= 0.9985;
+    v -= G * Math.sin(Math.min(th, Math.PI / 2));
+    s += v;
+    if (s < 0) { s = 0; v = 0; }
+    if (s >= L + R * Math.PI / 2) {
+      // Launch straight up from the lip
+      const vl = Math.max(0, v) * (ollie || 1);
+      if (!ollie) { ollieText = 'Ei ollieta'; msgT = 60; }
+      st = 'air'; ay = LIP_Y; avy = vl; spin = 0;
+    } else if (v <= 0 && s > L) {
+      // Rolled back down: no air at all
+      maxH = 0; finish(false);
+    } else if (v < 0.05 && s <= L && kicks.length === 0 && s > 5) {
+      maxH = 0; finish(false);
+    }
+  } else if (st === 'air') {
+    ay += avy; avy -= G;
+    if (ollie > 1) spin += 0.12 * (ollie > 1.2 ? 2 : 1);
+    const h = ay - LIP_Y;
+    if (st === 'air') {
+      maxH = Math.max(maxH, h);
+      best = Math.max(best, maxH);
+      if (!bonk && h >= ceilH()) {
+        bonk = true; avy = -Math.abs(avy) * 0.4; ay = LIP_Y + ceilH(); shake = 14;
+      }
+      if (avy < 0 && ay <= LIP_Y) finish(bonk);
+    }
+  }
+}
+
+function rr(X, Y, w, h, r) { x.beginPath(); x.roundRect(X, Y, w, h, r); }
+
+function drawBoard(p) {
+  x.save(); x.translate(p.x, -p.y); x.rotate(-p.a);
+  // fingers
+  x.fillStyle = '#f2c29b'; x.strokeStyle = '#c98f6a'; x.lineWidth = 1.5;
+  for (const [fx, lean] of [[-9, -0.12], [9, 0.1]]) {
+    x.save(); x.translate(fx, -7); x.rotate(lean);
+    rr(-5, -46, 10, 46, 5); x.fill(); x.stroke();
+    x.fillStyle = '#f7dccc'; rr(-3.5, -44, 7, 7, 3); x.fill(); // nail
+    x.fillStyle = '#f2c29b';
+    x.restore();
+  }
+  // deck
+  x.fillStyle = '#d6402f'; rr(-24, -7, 48, 5, 3); x.fill();
+  x.fillStyle = '#222'; rr(-24, -8, 48, 2, 1); x.fill();
+  // wheels
+  x.fillStyle = '#eee';
+  x.beginPath(); x.arc(-14, -1, 3, 0, 7); x.arc(14, -1, 3, 0, 7); x.fill();
+  x.restore();
+}
+
+function draw() {
+  const bp = boardPos();
+  const scale = Math.min(W / 420, H / 520);
+  // Camera: keep the board left of centre, follow it upward
+  let camX = Math.min(bp.x, LIP_X + 140 - W / scale * 0.6);
+  let camY = Math.max(0, bp.y - H / scale * 0.45);
+  x.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // sky / room
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#2b3a55'); g.addColorStop(1, '#6d86a8');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.save();
+  const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
+  x.translate(W * 0.4 - camX * scale + sx, H * 0.82 + camY * scale + sy);
+  x.scale(scale, scale);
+
+  // wall stripes so you see movement
+  x.fillStyle = 'rgba(255,255,255,0.05)';
+  for (let i = -2; i < 40; i++) x.fillRect(i * 120, -3000, 60, 3000);
+  // height marks
+  x.fillStyle = 'rgba(255,255,255,0.35)'; x.font = '12px system-ui';
+  for (let h = 100; h < ceilH() + 100; h += 100) {
+    x.fillRect(LIP_X + 40, -(LIP_Y + h), 14, 2);
+    x.fillText(`${h / 10} cm`, LIP_X + 58, -(LIP_Y + h) + 4);
+  }
+  // best mark
+  if (best > 0) {
+    x.fillStyle = '#ffd34d'; x.fillRect(LIP_X - 60, -(LIP_Y + best), 60, 2);
+    x.fillText('ennätys', LIP_X - 110, -(LIP_Y + best) + 4);
+  }
+  // ceiling
+  const cy = -(LIP_Y + ceilH());
+  x.fillStyle = '#8a5a35'; x.fillRect(-500, cy - 400, L + 1200, 400);
+  x.fillStyle = '#6b4226';
+  for (let i = -500; i < L + 700; i += 60) x.fillRect(i, cy - 400, 4, 400);
+  x.fillStyle = bonk ? '#ffe066' : '#b57a4b'; x.fillRect(-500, cy - 8, L + 1200, 8);
+  // lamp
+  x.fillStyle = '#ffeaa0'; x.beginPath(); x.arc(LIP_X - 14, cy + 6, 10, 0, Math.PI); x.fill();
+
+  // table / floor
+  x.fillStyle = '#c98b52'; x.fillRect(-500, 0, L + 1200, 400);
+  x.fillStyle = '#a86f3d'; x.fillRect(-500, 0, L + 1200, 6);
+  // runway marks
+  x.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let i = 0; i < L; i += 100) x.fillRect(i, 6, 2, 10);
+  // quarter pipe
+  x.fillStyle = '#e8e0d0';
+  x.beginPath(); x.moveTo(L, 0);
+  for (let t = 0; t <= Math.PI / 2 + 0.001; t += 0.05) x.lineTo(L + R * Math.sin(t), -(R - R * Math.cos(t)));
+  x.lineTo(LIP_X + 30, -R); x.lineTo(LIP_X + 30, 0); x.closePath(); x.fill();
+  x.strokeStyle = '#999'; x.lineWidth = 4;
+  x.beginPath(); x.moveTo(LIP_X - 2, -R); x.lineTo(LIP_X + 30, -R); x.stroke(); // coping
+  // ollie zone hint
+  x.strokeStyle = 'rgba(80,220,120,0.7)'; x.lineWidth = 5;
+  x.beginPath(); x.arc(L, -R, R + 4, 0, Math.PI / 2 - 1.1, false);
+  x.stroke();
+
+  // push puffs
+  for (const k of kicks) {
+    x.fillStyle = `rgba(255,255,255,${0.5 - k.t / 60})`;
+    x.beginPath(); x.arc(k.x - 30 - k.t, -6, 4 + k.t / 3, 0, 7); x.fill();
+  }
+  drawBoard(bp);
+  x.restore();
+
+  // HUD
+  x.fillStyle = '#fff'; x.textAlign = 'left'; x.font = 'bold 18px system-ui';
+  x.fillText(`Taso ${level}`, 14, 30);
+  x.font = '15px system-ui';
+  x.fillText(`Katto: ${Math.round(ceilH() / 10)} cm`, 14, 52);
+  x.fillText(`Ennätys: ${Math.round(best / 10)} cm`, 14, 72);
+  // speed bar
+  x.fillStyle = 'rgba(255,255,255,0.25)'; rr(W - 34, 20, 18, 120, 9); x.fill();
+  const sp = Math.max(0, Math.min(1, (st === 'air' ? 0 : v) / VMAX));
+  x.fillStyle = sp > 0.85 ? '#5ee07a' : '#ffd34d';
+  rr(W - 34, 20 + 120 * (1 - sp), 18, 120 * sp, 9); x.fill();
+  x.textAlign = 'center';
+  if (st === 'air' || st === 'end') {
+    x.font = 'bold 22px system-ui';
+    x.fillText(`${Math.round(Math.max(0, maxH) / 10)} cm`, W / 2, 34);
+  }
+  if (msgT > 0 && ollieText) {
+    x.font = 'bold 26px system-ui'; x.fillStyle = ollie >= 1.3 ? '#5ee07a' : '#ffd34d';
+    x.fillText(ollieText, W / 2, H * 0.3);
+  }
+  x.fillStyle = '#fff';
+  if (st === 'ready') {
+    x.font = 'bold 26px system-ui'; x.fillText('Sormiskeitti 🛹', W / 2, H * 0.22);
+    x.font = '17px system-ui';
+    x.fillText('Napauta nopeasti = potkaise vauhtia', W / 2, H * 0.22 + 34);
+    x.fillText('Napauta rampin yläpäässä = ollie!', W / 2, H * 0.22 + 58);
+    x.fillText('Osu kattoon.', W / 2, H * 0.22 + 82);
+  } else if (st === 'roll' && s > L && !ollie && theta() > 1.0) {
+    x.font = 'bold 30px system-ui'; x.fillStyle = '#5ee07a';
+    x.fillText('NYT!', W / 2, H * 0.3);
+  } else if (st === 'end') {
+    x.font = 'bold 28px system-ui'; x.fillText(msg, W / 2, H * 0.22);
+    if (performance.now() - endT > 700) {
+      x.font = '17px system-ui'; x.fillText('Napauta jatkaaksesi', W / 2, H * 0.22 + 32);
+    }
+  }
+}
+
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= 1000 / 60) { step(); acc -= 1000 / 60; }
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
